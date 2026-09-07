@@ -25,6 +25,9 @@ function goodImg(url) {
   if (/news\.google|gstatic|google\.com\/images|default-logo|og-banners\/home|favicon/i.test(u)) return false;
   return true;
 }
+function cover(src) {
+  return '<div class="ph" style="--h:' + hue(src) + '"><em>' + src + '</em></div>';
+}
 function paintWire(items) {
   const track = document.getElementById("wire-track");
   const dots = document.getElementById("wire-dots");
@@ -41,8 +44,8 @@ function paintWire(items) {
     const title = clean(it.title || "");
     const blurb = okBlurb(clean(it.blurb || ""));
     const photo = goodImg(img)
-      ? '<img src="' + img + '" alt="" loading="' + (i ? "lazy" : "eager") + '" onerror="this.replaceWith(Object.assign(document.createElement(\'div\'),{className:\'ph\',style:\'--h:' + hue(src) + '\',innerHTML:this.parentNode.nextElementSibling ? this.parentNode.nextElementSibling.innerHTML : \'\'}))"/>'
-      : '<div class="ph" style="--h:' + hue(src + title) + '"><em>' + src + '</em><b>' + title + '</b></div>';
+      ? '<img src="' + img + '" alt="" loading="' + (i ? "lazy" : "eager") + '" onerror="this.outerHTML=this.getAttribute(\'data-ph\')" data-ph="' + cover(src).replace(/"/g, '"') + '"/>'
+      : cover(src);
     return '<a class="wire-card" href="' + href + '" target="_blank" rel="noopener">' +
       '<div class="shot">' + photo + '</div>' +
       '<div class="copy"><em>' + src + '</em><strong>' + title + '</strong>' +
