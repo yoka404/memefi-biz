@@ -28,10 +28,12 @@ function decode(html) {
   return String(html || "")
     .replace(/<!\[CDATA\[|\]\]>/g, "")
     .replace(/&/g, "&")
-    .replace(/"/g, "\"")
+    .replace(/"/g, '"')
     .replace(/&#39;|'/g, "'")
     .replace(/</g, "<")
-    .replace(/>/g, ">");
+    .replace(/>/g, ">")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)));
 }
 function strip(html) {
   return decode(html).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
@@ -42,10 +44,20 @@ function tag(block, name) {
   const plain = block.match(new RegExp("<" + name + ">([\\s\\S]*?)</" + name + ">", "i"));
   return plain ? plain[1].trim() : "";
 }
+function isHome(url) {
+  try {
+    const u = new URL(url);
+    const path = (u.pathname || "/").replace(/\/+$/, "") || "/";
+    return path === "/" || path === "/news" || path === "/en" || path === "/home";
+  } catch (e) {
+    return true;
+  }
+}
 function badImage(url) {
   const u = String(url || "").toLowerCase();
   if (!/^https?:/.test(u)) return true;
-  if (/news\.google|google\.com\/images|gstatic\.com|googleusercontent\.com\/icon|favicon|logo.*google|\/logo\./.test(u)) return true;
+  if (/news\.google|google\.com\/images|gstatic\.com|googleusercontent\.com\/icon/.test(u)) return true;
+  if (/favicon|default-logo|og-banners\/home|\/logo\.|sprite|placeholder/.test(u)) return true;
   return false;
 }
 function pickImage(chunk) {
@@ -56,12 +68,17 @@ function pickImage(chunk) {
   for (const m of imgs) hits.push(decode(m[1]));
   return hits.find((u) => !badImage(u)) || null;
 }
-function publisherUrl(chunk, link) {
-  const raw = decode(chunk);
+function articleUrl(chunk, link) {
+  const raw = decode(chunk || "");
+  const item = String(link || "").trim();
+  if (/news\.google\.com\/rss\/articles\//.test(item)) return item;
   const urls = raw.match(/https?:\/\/[^\s"'<>]+/g) || [];
-  const real = urls.find((u) => !/news\.google|google\.com\/rss/.test(u));
-  if (real) return real.replace(/[.,)]+$/, "");
-  return link;
+  const g = urls.find((u) => /news\.google\.com\/rss\/articles\//.test(u));
+  if (g) return g.replace(/[.,)]+$/, "");
+  const deep = urls.find((u) => !/news\.google|google\.com\/rss/.test(u) && !isHome(u));
+  if (deep) return deep.replace(/[.,)]+$/, "");
+  if (item && !isHome(item)) return item;
+  return item || null;
 }
 function score(title, desc, source) {
   const t = (title + " " + desc + " " + source).toLowerCase();
@@ -82,21 +99,27 @@ function parseFeed(xml, fallbackSource) {
   const out = [];
   const chunks = String(xml).split(/<item[\s>]/i).slice(1);
   for (const chunk of chunks) {
-    const title = strip(tag(chunk, "title"));
+    let title = strip(tag(chunk, "title"));
     let link = strip(tag(chunk, "link"));
     if (!link) {
       const alt = chunk.match(/<link[^>]+href="([^"]+)"/i);
       if (alt) link = alt[1];
     }
-    if (!title || !link) continue;
     const descRaw = tag(chunk, "description");
+    const url = articleUrl(descRaw + " " + chunk, link);
+    if (!title || !url || isHome(url)) continue;
+    let sourceName = strip(tag(chunk, "source")) || fallbackSource;
+    const split = title.match(/^(.*)\s[-|\u2013]\s([^\-]{2,40})$/);
+    if (split && /google|tape|desk/i.test(fallbackSource)) {
+      title = split[1].trim();
+      sourceName = split[2].trim() || sourceName;
+    }
     const desc = strip(descRaw).replace(/^https?:\/\/\S+$/, "").slice(0, 180);
-    const url = publisherUrl(descRaw + " " + chunk, link);
-    const sourceName = strip(tag(chunk, "source")) || fallbackSource;
+    const blurb = desc && !/^https?:|^href=|^<a /i.test(desc) ? desc : "";
     out.push({
-      source: sourceName.replace(/ - Google News$/, "") || fallbackSource,
+      source: sourceName.replace(/ - Google News$/i, "") || fallbackSource,
       title,
-      blurb: desc && !desc.startsWith("<") && !/^href=/.test(desc) ? desc : "",
+      blurb,
       url,
       image: pickImage(chunk),
       published: strip(tag(chunk, "pubDate")),
@@ -111,7 +134,7 @@ async function pull(feed) {
   try {
     const r = await fetch(feed.url, {
       signal: ctrl.signal,
-      headers: { "User-Agent": "memefi.biz wire/1.3", Accept: "application/rss+xml, application/xml, text/xml" }
+      headers: { "User-Agent": "memefi.biz wire/1.4", Accept: "application/rss+xml, application/xml, text/xml" }
     });
     if (!r.ok) return [];
     return parseFeed(await r.text(), feed.source);
@@ -122,13 +145,14 @@ async function pull(feed) {
   }
 }
 async function ogImage(url) {
-  if (!url || /news\.google/.test(url)) return null;
+  if (!url || /news\.google/.test(url) || isHome(url)) return null;
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 2200);
   try {
     const r = await fetch(url, {
       signal: ctrl.signal,
-      headers: { "User-Agent": "Mozilla/5.0 memefi.biz", Accept: "text/html" }
+      headers: { "User-Agent": "Mozilla/5.0 memefi.biz", Accept: "text/html" },
+      redirect: "follow"
     });
     if (!r.ok) return null;
     const html = await r.text();
@@ -143,13 +167,14 @@ async function ogImage(url) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("Cache-Control", "s-maxage=120, stale-while-revalidate=600");
+  res.setHeader("Cache-Control", "s-maxage=90, stale-while-revalidate=400");
   const bags = await Promise.all(FEEDS.map(pull));
   const seen = new Set();
   const mixed = bags.flat().filter((row) => {
     const key = (row.title || "").toLowerCase().slice(0, 80);
     if (!key || seen.has(key)) return false;
     seen.add(key);
+    if (!row.url || isHome(row.url)) return false;
     return row.score >= 1;
   });
   mixed.sort((a, b) => b.score - a.score || ((b.image ? 1 : 0) - (a.image ? 1 : 0)));
