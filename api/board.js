@@ -1,22 +1,13 @@
 export const config = { maxDuration: 30 };
 import { buildUniverse } from "../lib/indexer.js";
 import { fillHolders } from "../lib/blockscout.js";
+import { padGroup } from "../lib/pads.js";
 
 const YAHOO = ["AMC","NVDA","HIMS","MU","MSTR","TSLA","HOOD","AAPL","GME","SPY","MSFT","AMD","AMZN","META","GOOGL","NFLX","PLTR","INTC","BABA","COIN","RBLX","DJT","GLD","SLV","QQQ","IWM"];
 const PIN = "0x385f4f8ae47651ce5f58f5265395a669f8281e18".toLowerCase();
 const PIN_GG = "0xcacb0e9caccee63ec4d82952e561a291c68bcb68".toLowerCase();
 const JUNK = /^(test|asdf|qwer|xxxx|zzzz|aaaa|abcd|foo|bar|xxx)/i;
 const TRUSTED = new Set(["long", "bankr", "feel", "flap", "pons"]);
-
-function padGroup(raw) {
-  const s = String(raw || "").toLowerCase();
-  if (s.includes("pons")) return "pons";
-  if (s.includes("long")) return "long";
-  if (s.includes("bankr")) return "bankr";
-  if (s.includes("feel")) return "feel";
-  if (s.includes("flap")) return "flap";
-  return "other";
-}
 
 async function yahoo(symbol) {
   const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(symbol) + "?interval=1d&range=5d";
@@ -48,6 +39,14 @@ function pickMcap(live, base) {
   return null;
 }
 
+function pickPad(base, live) {
+  const b = base && base.launchpad;
+  const l = live && live.launchpad;
+  if (b && TRUSTED.has(padGroup(b))) return b;
+  if (l && TRUSTED.has(padGroup(l))) return l;
+  return b || l;
+}
+
 function slimDump(c, extra) {
   const rep = c.reported || {};
   return Object.assign({
@@ -77,6 +76,7 @@ function slimDump(c, extra) {
 function mergeRow(base, live) {
   if (!live) return base;
   return Object.assign({}, base, live, {
+    launchpad: pickPad(base, live),
     holders: (base && base.holders != null) ? base.holders : live.holders,
     stockLockedUnits: (base && base.stockLockedUnits != null) ? base.stockLockedUnits : live.stockLockedUnits,
     stockLockedUsd: (base && base.stockLockedUsd != null) ? base.stockLockedUsd : live.stockLockedUsd,
