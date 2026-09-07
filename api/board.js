@@ -116,6 +116,19 @@ function isTrusted(c) {
   return TRUSTED.has(padGroup(c.launchpad));
 }
 
+function buildLogos(rh) {
+  const out = {};
+  const keys = new Set(Object.keys(rh || {}));
+  for (const s of YAHOO) keys.add(s);
+  for (const sym of keys) {
+    out[sym] = {
+      stock: "https://financialmodelingprep.com/image-stock/" + encodeURIComponent(sym) + ".png",
+      rh: rh && rh[sym] ? rh[sym] : null
+    };
+  }
+  return out;
+}
+
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "s-maxage=20, stale-while-revalidate=60");
   try {
@@ -180,7 +193,7 @@ export default async function handler(req, res) {
       },
       quotes,
       onchain,
-      logos: (uni && uni.logos) || {},
+      logos: buildLogos((uni && uni.logos) || {}),
       top: trusted.slice(0, 250),
       newest,
       metals,
