@@ -11,6 +11,7 @@ const PIN_GG = "0xcacb0e9caccee63ec4d82952e561a291c68bcb68".toLowerCase();
 const PIN_BONER = "0x98096d17e191b3da1d5f99a6d7b3584351b11e18".toLowerCase();
 const JUNK = /^(test|asdf|qwer|xxxx|zzzz|aaaa|abcd|foo|bar|xxx)/i;
 const TRUSTED = new Set(["long", "bankr", "feel", "flap", "pons"]);
+const MOVER_FLOOR = 3e6;
 
 async function yahoo(symbol) {
   const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(symbol) + "?interval=1d&range=5d";
@@ -145,7 +146,8 @@ function lite(c) {
     marketCap: c.marketCap,
     change24h: c.change24h,
     stockLockedUsd: c.stockLockedUsd,
-    stockLockedUnits: c.stockLockedUnits
+    stockLockedUnits: c.stockLockedUnits,
+    dexImage: c.dexImage || null
   };
 }
 
@@ -156,7 +158,11 @@ function buildSnapshot(dump, trusted) {
   const vol = agg.volume24hUsd && agg.volume24hUsd.total;
   const fees = agg.fees24hUsd && agg.fees24hUsd.total;
   const holders = agg.holders && agg.holders.total;
-  const movers = trusted.filter((c) => Number.isFinite(Number(c.change24h))).sort((a, b) => Number(b.change24h) - Number(a.change24h)).slice(0, 3).map(lite);
+  const movers = trusted
+    .filter((c) => Number.isFinite(Number(c.change24h)) && Number(c.marketCap) >= MOVER_FLOOR)
+    .sort((a, b) => Number(b.change24h) - Number(a.change24h))
+    .slice(0, 3)
+    .map(lite);
   const locked = trusted.filter((c) => Number(c.stockLockedUsd) > 0).sort((a, b) => Number(b.stockLockedUsd) - Number(a.stockLockedUsd)).slice(0, 3).map(lite);
   return {
     stockLockedUsd: lockedUsd,
