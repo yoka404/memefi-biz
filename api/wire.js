@@ -24,19 +24,28 @@ const FALLBACK = [
   { source: "DefiPrime", title: "Quoted in Nvidia: the stock-paired memecoin boom, measured on-chain.", blurb: "AI/NVDA remains the deepest semiconductor pair.", url: "https://defiprime.com/stock-paired-memecoins", score: 8 }
 ];
 
+const AMP = "\u0026amp;";
+const LT = "\u0026lt;";
+const GT = "\u0026gt;";
+const QUOT = "\u0026quot;";
+const APOS = "\u0026#39;";
+
 function decode(html) {
-  return String(html || "")
-    .replace(/<!\[CDATA\[|\]\]>/g, "")
-    .replace(/&/g, "&")
-    .replace(/"/g, '"')
-    .replace(/&#39;|'/g, "'")
-    .replace(/</g, "<")
-    .replace(/>/g, ">")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)));
+  let s = String(html || "").replace(/<!\[CDATA\[|\]\]>/g, "");
+  for (let i = 0; i < 4; i++) {
+    const next = s.split(AMP).join("&").split(LT).join("<").split(GT).join(">").split(QUOT).join('"').split(APOS).join("'").split("\u0026apos;").join("'");
+    if (next === s) break;
+    s = next;
+  }
+  return s;
 }
 function strip(html) {
-  return decode(html).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  let s = decode(html);
+  s = s.replace(/<[^>]*>/g, " ");
+  s = s.replace(/<[^>]*$/g, " ");
+  s = s.replace(/https?:\/\/news\.google\.com\/\S+/g, " ");
+  s = s.replace(/https?:\/\/\S+/g, " ");
+  return s.replace(/\s+/g, " ").trim();
 }
 function tag(block, name) {
   const cdata = block.match(new RegExp("<" + name + ">\\s*<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>", "i"));
@@ -52,6 +61,10 @@ function isHome(url) {
   } catch (e) {
     return true;
   }
+}
+function junkText(s) {
+  const t = String(s || "");
+  return /href\s*=|<a\s|news\.google|<font|<html|<|>/i.test(t);
 }
 function badImage(url) {
   const u = String(url || "").toLowerCase();
@@ -95,6 +108,15 @@ function score(title, desc, source) {
   if (/nft drop|airdrop claim|giveaway|sponsored/.test(t) && s < 5) s -= 4;
   return s;
 }
+function blurbOf(title, source, descRaw) {
+  const text = strip(descRaw);
+  if (!text || junkText(text)) return "";
+  const compact = text.toLowerCase().replace(/\s+/g, " ");
+  const head = String(title || "").toLowerCase().slice(0, 24);
+  if (head && compact.indexOf(head) === 0) return "";
+  if (source && compact === String(source).toLowerCase()) return "";
+  return text.slice(0, 180);
+}
 function parseFeed(xml, fallbackSource) {
   const out = [];
   const chunks = String(xml).split(/<item[\s>]/i).slice(1);
@@ -114,8 +136,7 @@ function parseFeed(xml, fallbackSource) {
       title = split[1].trim();
       sourceName = split[2].trim() || sourceName;
     }
-    const desc = strip(descRaw).replace(/^https?:\/\/\S+$/, "").slice(0, 180);
-    const blurb = desc && !/^https?:|^href=|^<a /i.test(desc) ? desc : "";
+    const blurb = blurbOf(title, sourceName, descRaw);
     out.push({
       source: sourceName.replace(/ - Google News$/i, "") || fallbackSource,
       title,
@@ -123,7 +144,7 @@ function parseFeed(xml, fallbackSource) {
       url,
       image: pickImage(chunk),
       published: strip(tag(chunk, "pubDate")),
-      score: score(title, desc, sourceName + " " + fallbackSource)
+      score: score(title, blurb, sourceName + " " + fallbackSource)
     });
   }
   return out;
@@ -134,7 +155,7 @@ async function pull(feed) {
   try {
     const r = await fetch(feed.url, {
       signal: ctrl.signal,
-      headers: { "User-Agent": "memefi.biz wire/1.4", Accept: "application/rss+xml, application/xml, text/xml" }
+      headers: { "User-Agent": "memefi.biz wire/1.5", Accept: "application/rss+xml, application/xml, text/xml" }
     });
     if (!r.ok) return [];
     return parseFeed(await r.text(), feed.source);
@@ -167,7 +188,7 @@ async function ogImage(url) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("Cache-Control", "s-maxage=90, stale-while-revalidate=400");
+  res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=180");
   const bags = await Promise.all(FEEDS.map(pull));
   const seen = new Set();
   const mixed = bags.flat().filter((row) => {
@@ -175,6 +196,7 @@ export default async function handler(req, res) {
     if (!key || seen.has(key)) return false;
     seen.add(key);
     if (!row.url || isHome(row.url)) return false;
+    if (junkText(row.blurb) || junkText(row.title)) return false;
     return row.score >= 1;
   });
   mixed.sort((a, b) => b.score - a.score || ((b.image ? 1 : 0) - (a.image ? 1 : 0)));
