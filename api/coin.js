@@ -1,4 +1,5 @@
 export const config = { maxDuration: 30 };
+import { tokenHolders } from "../lib/blockscout.js";
 const METALS = new Set(["GLD","SLV"]);
 
 function padNorm(raw) {
@@ -147,6 +148,8 @@ export default async function handler(req, res) {
     const logo = (coin && coin.logo) ? ("https://memefimarketcap.com/" + coin.logo) : null;
     const created = dx && dx.pairCreatedAt;
     const tx = dx && dx.txns && (dx.txns.h24 || dx.txns.h6);
+    let holders = coin && (coin.holders || coin.holdersExclPoolManager || coin.holdersTotal);
+    if (holders == null) holders = await tokenHolders(address);
     res.status(200).json({
       generated: dump.meta && dump.meta.generated,
       flagged,
@@ -174,7 +177,7 @@ export default async function handler(req, res) {
         createdAt: created ? new Date(created).toISOString() : (coin && coin.launchedAt),
         stockLockedUnits: coin && coin.stockLockedUnits,
         stockLockedUsd: coin && coin.stockLockedUsd,
-        holders: coin && (coin.holders || coin.holdersExclPoolManager || coin.holdersTotal),
+        holders,
         lockedForever: coin && coin.lockedForever,
         lpFeePct: coin && coin.lpFeePct,
         logo,
