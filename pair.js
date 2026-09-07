@@ -62,6 +62,14 @@ function setAvatar(img, urls) {
   };
   next();
 }
+function loadChart(poolId, address) {
+  const box = document.getElementById("chart");
+  if (!box) return;
+  const id = poolId || address;
+  if (!id) { box.textContent = "No pool on DexScreener"; return; }
+  const src = "https://dexscreener.com/robinhood/" + id + "?embed=1&loadChartSettings=0&trades=0&info=0&chartLeftToolbar=0&chartTheme=dark&theme=dark";
+  box.innerHTML = `<iframe title="DexScreener chart" src="${src}" allow="clipboard-write" loading="lazy"></iframe>`;
+}
 
 async function main() {
   const address = addrFromPath();
@@ -135,6 +143,7 @@ async function main() {
     pills += `<div><em>1h</em><b class="${Number(c.change1h) >= 0 ? "up" : "dn"}">${fmtChg(c.change1h)}</b></div>`;
   }
   document.getElementById("pills").innerHTML = pills;
+  loadChart(c.poolId, c.address);
   const rows = [
     ["Quote asset", c.pair || "—"],
     ["Market cap", fmtUsd(c.marketCap)],
