@@ -1,6 +1,16 @@
 export const config = { maxDuration: 30 };
 const METALS = new Set(["GLD","SLV"]);
 
+function padNorm(raw) {
+  const s = String(raw || "").toLowerCase();
+  if (s.includes("pons")) return "pons";
+  if (s.includes("long")) return "long";
+  if (s.includes("bankr")) return "bankr";
+  if (s.includes("feel")) return "feel";
+  if (s.includes("flap")) return "flap";
+  return raw || "dex";
+}
+
 async function yahoo(symbol) {
   try {
     const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(symbol) + "?interval=1d&range=5d";
@@ -11,6 +21,26 @@ async function yahoo(symbol) {
     return Number.isFinite(Number(px)) ? Number(px) : null;
   } catch (e) {
     return null;
+  }
+}
+
+async function stockkitMap() {
+  try {
+    const r = await fetch("https://api.stockkit.dev/v1/assets", { headers: { "User-Agent": "memefi.biz" } });
+    if (!r.ok) return {};
+    const data = await r.json();
+    const out = {};
+    for (const a of data.assets || []) {
+      if (!a || !a.symbol) continue;
+      out[String(a.symbol).toUpperCase()] = {
+        symbol: String(a.symbol).toUpperCase(),
+        name: a.name || a.symbol,
+        address: String(a.address || "").toLowerCase()
+      };
+    }
+    return out;
+  } catch (e) {
+    return {};
   }
 }
 
@@ -86,11 +116,13 @@ export default async function handler(req, res) {
     return;
   }
   try {
-    const r = await fetch("https://memefimarketcap.com/data.json", {
-      headers: { "User-Agent": "memefi.biz desk" }
-    });
-    if (!r.ok) throw new Error("dump");
-    const dump = await r.json();
+    let dump = { coins: [], stocks: {}, anomalies: [], meta: {} };
+    try {
+      const r = await fetch("https://memefimarketcap.com/data.json", { headers: { "User-Agent": "memefi.biz desk" } });
+      if (r.ok) dump = await r.json();
+    } catch (e) {}
+    const kit = await stockkitMap();
+    const stocks = Object.assign({}, kit, dump.stocks || {});
     let coin = (dump.coins || []).find((c) => String(c.address || "").toLowerCase() === address);
     let flagged = null;
     if (!coin) {
@@ -100,17 +132,17 @@ export default async function handler(req, res) {
         coin = Object.assign({}, a, a.reported || {});
       }
     }
-    const dxpack = await dex(address, dump.stocks || {});
+    const dxpack = await dex(address, stocks);
     const dx = dxpack && dxpack.best;
     if (!coin && !dx) {
       res.status(404).json({ error: "not found" });
       return;
     }
-    const quote = (dx && dx.quoteToken && dx.quoteToken.symbol) || (coin && coin.pair);
-    const stock = quote && dump.stocks ? dump.stocks[quote] : null;
-    const isEquity = Boolean(stock);
-    const isMetal = METALS.has(String(quote || "").toUpperCase());
-    const cash = isEquity ? await yahoo(quote) : null;
+    const quote = String((dx && dx.quoteToken && dx.quoteToken.symbol) || (coin && coin.pair) || "").toUpperCase();
+    const stock = quote && stocks[quote] ? stocks[quote] : null;
+    const isEquity = Boolean(stock && stock.address);
+    const isMetal = METALS.has(quote);
+    const cash = isEquity || isMetal ? await yahoo(quote) : null;
     const info = (dx && dx.info) || {};
     const logo = (coin && coin.logo) ? ("https://memefimarketcap.com/" + coin.logo) : null;
     const created = dx && dx.pairCreatedAt;
@@ -118,16 +150,16 @@ export default async function handler(req, res) {
     res.status(200).json({
       generated: dump.meta && dump.meta.generated,
       flagged,
-      isEquity,
+      isEquity: isEquity || isMetal,
       isMetal,
       coin: {
         ticker: (coin && coin.ticker) || (dx && dx.baseToken && dx.baseToken.symbol),
         name: (coin && coin.name) || (dx && dx.baseToken && dx.baseToken.name),
         address,
         poolId: (dx && dx.pairAddress) || (coin && coin.poolId),
-        pair: quote,
-        pairAddress: (dx && dx.quoteToken && dx.quoteToken.address) || (coin && coin.pairAddress),
-        launchpad: (coin && coin.launchpad) || (dx && dx.dexId) || "dex",
+        pair: quote || (coin && coin.pair),
+        pairAddress: (dx && dx.quoteToken && dx.quoteToken.address) || (stock && stock.address),
+        launchpad: padNorm((coin && coin.launchpad) || (dx && dx.dexId)),
         price: (dx && dx.priceUsd) || (coin && coin.price),
         priceNative: dx && dx.priceNative,
         change1h: dx && dx.priceChange && dx.priceChange.h1,
@@ -158,7 +190,7 @@ export default async function handler(req, res) {
         symbol: stock.symbol,
         name: stock.name,
         address: stock.address,
-        onchain: stock.price,
+        onchain: stock.price || null,
         totalSupply: stock.totalSupply
       },
       cash
