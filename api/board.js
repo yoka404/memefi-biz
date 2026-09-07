@@ -1,4 +1,4 @@
-export const config = { maxDuration: 30 };
+export const config = { maxDuration: 45 };
 import { buildUniverse } from "../lib/indexer.js";
 import { fillHolders } from "../lib/blockscout.js";
 import { fillPads } from "../lib/airlock.js";
@@ -101,23 +101,23 @@ async function wrapperUtil(coins, onchain) {
   };
 }
 
-function buildSnapshot(uni, world, tape, util, headBlock) {
-  const lockedUsd = world.reduce((n, c) => n + (Number(c.stockLockedUsd) || 0), 0);
-  const lockedKnown = world.filter((c) => Number(c.stockLockedUsd) > 0).length;
-  const vol = world.reduce((n, c) => n + (Number(c.volume24h) || 0), 0);
-  const holders = world.reduce((n, c) => n + (Number(c.holders) || 0), 0);
-  const pairs = new Set(world.map((c) => c.pair).filter(Boolean));
+function buildSnapshot(uni, universe, tape, util, headBlock) {
+  const lockedUsd = universe.reduce((n, c) => n + (Number(c.stockLockedUsd) || 0), 0);
+  const lockedKnown = universe.filter((c) => Number(c.stockLockedUsd) > 0).length;
+  const vol = universe.reduce((n, c) => n + (Number(c.volume24h) || 0), 0);
+  const holders = universe.reduce((n, c) => n + (Number(c.holders) || 0), 0);
+  const pairs = new Set(universe.map((c) => c.pair).filter(Boolean));
   const movers = tape
     .filter((c) => Number.isFinite(Number(c.change24h)) && Number(c.marketCap) >= MOVER_FLOOR)
     .sort((a, b) => Number(b.change24h) - Number(a.change24h))
     .slice(0, 3)
     .map(lite);
-  const locked = world.filter((c) => Number(c.stockLockedUsd) > 0).sort((a, b) => Number(b.stockLockedUsd) - Number(a.stockLockedUsd)).slice(0, 3).map(lite);
+  const locked = universe.filter((c) => Number(c.stockLockedUsd) > 0).sort((a, b) => Number(b.stockLockedUsd) - Number(a.stockLockedUsd)).slice(0, 3).map(lite);
   return {
     stockLockedUsd: lockedUsd,
     stockLockedKnown: lockedKnown,
-    coinsListed: world.length,
-    launches: (uni && uni.coins && uni.coins.length) || world.length,
+    coinsListed: universe.length,
+    launches: (uni && uni.coins && uni.coins.length) || universe.length,
     equitiesPaired: pairs.size,
     volume24h: vol,
     holders: holders,
@@ -141,7 +141,8 @@ export default async function handler(req, res) {
     if (!map[PIN]) map[PIN] = { ticker: "MEME", name: "A Meme Coin", address: PIN, pair: "AMC", launchpad: "long", listed: true };
     if (!map[PIN_GG]) map[PIN_GG] = { ticker: "GG", name: "Golden Goose", address: PIN_GG, pair: "GLD", launchpad: "pons", listed: true };
     if (!map[PIN_BONER]) map[PIN_BONER] = { ticker: "BONER", name: "Boner Coin", address: PIN_BONER, pair: "HIMS", launchpad: "long", listed: true };
-    const world = Object.values(map).filter((c) => !looksScam(c));
+    const all = Object.values(map);
+    const world = all.filter((c) => !looksScam(c));
     world.sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
     await fillDex(world.slice(0, 200), 80);
     const onchain = (uni && uni.onchain) || {};
@@ -159,7 +160,7 @@ export default async function handler(req, res) {
         if (px != null) quotes[s] = px;
       } catch (e) {}
     }));
-    const util = await wrapperUtil(world, onchain);
+    const util = await wrapperUtil(all, onchain);
     const head = await latestBlock();
     res.status(200).json({
       generated: uni && uni.generated,
@@ -168,12 +169,12 @@ export default async function handler(req, res) {
       aggregates: {
         coins: tape.length,
         listed: tape.length,
-        tracked: world.length,
-        launches: (uni && uni.coins && uni.coins.length) || world.length,
+        tracked: all.length,
+        launches: all.length,
         metals: metals.length,
-        volume24h: world.reduce((n, c) => n + (Number(c.volume24h) || 0), 0)
+        volume24h: all.reduce((n, c) => n + (Number(c.volume24h) || 0), 0)
       },
-      snapshot: buildSnapshot(uni, world, tape, util, head),
+      snapshot: buildSnapshot(uni, all, tape, util, head),
       quotes,
       onchain,
       logos: buildLogos((uni && uni.logos) || {}),
