@@ -11,3 +11,6 @@
 #live-stamp.waiting{color:#c4a574}
 #live-stamp.waiting::after{content:"";display:inline-block;width:6px;height:6px;margin-left:8px;border-radius:50%;background:#e8c36a;animation:ember 1.3s ease-in-out infinite;vertical-align:middle}
 .pills b.waiting,.snap.waiting{animation:hush 1.4s ease-in-out infinite}
+.socials a{display:inline-flex;align-items:center;gap:6px}
+.socials a svg{flex:0 0 auto}
+.file td{white-space:normal;word-break:break-all}
