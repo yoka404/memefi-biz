@@ -15,7 +15,7 @@
 <meta property="og:url" content="https://www.memefi.biz/"/>
 <meta property="og:image" content="https://www.memefi.biz/memefi.png"/>
 <meta property="og:image:alt" content="MEMEFI"/>
-<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:card" content="summary"/>
 <meta name="twitter:site" content="@memefibiz"/>
 <meta name="twitter:creator" content="@memefibiz"/>
 <meta name="twitter:title" content="MEMEFI"/>
@@ -53,7 +53,7 @@
     </div>
   </div>
   <figure>
-    <img src="memefi.png" alt="Principal mark"/>
+    <img src="memefi.png" width="180" height="180" alt="Principal mark"/>
     <figcaption>Principal</figcaption>
   </figure>
 </section>
@@ -67,10 +67,33 @@
   </article>
   <div class="rail">
     <div class="card-head"><h2>Wire</h2><span id="wire-tag">Aggregator</span></div>
-    <ul class="stories" id="wire-list">
-      <li><a class="read" href="https://decrypt.co/377463/crypto-meme-coin-stock-pairs-robinhood" target="_blank" rel="noopener"><span class="ico">📰</span>Read</a></li>
-    </ul>
+    <ul class="stories" id="wire-list"></ul>
   </div>
+</section>
+
+<section class="layout" id="snapshot">
+  <article class="card wide snapcard">
+    <div class="card-head">
+      <h2>Market snapshot</h2>
+      <span id="snap-block">on-chain</span>
+    </div>
+    <div class="snap-kpis" id="snap-kpis">
+      <div><em>Stock locked in pools</em><b id="kpi-locked">—</b><small id="kpi-locked-sub">unwithdrawable</small></div>
+      <div><em>Coins tracked</em><b id="kpi-coins">—</b><small id="kpi-coins-sub">listed launches</small></div>
+      <div><em>Equities paired</em><b id="kpi-eq">—</b><small>tokenized equities used as quote</small></div>
+      <div><em>Volume 24h</em><b id="kpi-vol">—</b><small id="kpi-vol-sub">fees · holders</small></div>
+    </div>
+    <div class="snap-split">
+      <div>
+        <div class="card-head tight"><h2>Top movers</h2><span>24h · trusted tape</span></div>
+        <ul class="snap-list" id="snap-movers"></ul>
+      </div>
+      <div>
+        <div class="card-head tight"><h2>Most equity locked</h2><span>stock side of the pool</span></div>
+        <ul class="snap-list" id="snap-locked"></ul>
+      </div>
+    </div>
+  </article>
 </section>
 
 <section class="layout" id="prices">
@@ -118,7 +141,7 @@
 </section>
 
 <section class="feature" id="token">
-  <img src="memefi.png" alt=""/>
+  <img src="memefi.png" width="48" height="48" alt=""/>
   <div>
     <p class="eyebrow">Native pair</p>
     <h2>$MEMEFI / HOOD</h2>
