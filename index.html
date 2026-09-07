@@ -31,7 +31,7 @@
   <a class="brand" href="/">MEMEFI</a>
   <nav>
     <a class="on" href="#wire">Wire</a>
-    <a href="#snapshot">Tape</a>
+    <a href="#snapshot">Snapshot</a>
     <a href="#prices">Board</a>
     <a href="#token">Token</a>
     <a href="https://x.com/memefibiz" target="_blank" rel="noopener">X</a>
@@ -61,12 +61,12 @@
       <span id="snap-block">on-chain</span>
     </div>
     <div class="snap-kpis" id="snap-kpis">
-      <div data-tip="Official stock or metal tokens sitting in meme pools on this tape."><em>Stock locked in pools</em><b id="kpi-locked">-</b><small id="kpi-locked-sub">in meme pools</small></div>
+      <div data-tip="Official stock or metal tokens sitting in meme pools."><em>Stock locked in pools</em><b id="kpi-locked">-</b><small id="kpi-locked-sub">in meme pools</small></div>
       <div><em>Coins tracked</em><b id="kpi-coins">-</b><small id="kpi-coins-sub">listed launches</small></div>
       <div><em>Equities paired</em><b id="kpi-eq">-</b><small>tokenized equities used as quote</small></div>
       <div><em>Volume 24h</em><b id="kpi-vol">-</b><small id="kpi-vol-sub">fees / holders</small></div>
     </div>
-    <div class="snap-util" id="snap-util" data-tip="Wrapper AUM is on-chain supply of the official stock or metal token times its on-chain print. Locked is how much of that wrapper sits in meme pools. The percent is locked / AUM for names on this tape. If AUM rises and locked does not, utilization falls."></div>
+    <div class="snap-util" id="snap-util"></div>
     <div class="snap-split">
       <div>
         <div class="card-head tight"><h2>Top movers</h2><span>24h / $3M+ market cap</span></div>
@@ -87,7 +87,7 @@
       <span id="session">Stock-paired</span>
     </div>
     <div class="filters" id="pads">
-      <button data-pad="all" class="on" data-tip="Pairs at or above $100k market cap.">Tape</button>
+      <button data-pad="all" class="on" data-tip="Every pair on the board with market cap at or above $100k.">All</button>
       <button data-pad="pons" data-tip="Pons V2 launches quoted in official stock or metal tokens.">Pons</button>
       <button data-pad="long" data-tip="long.xyz launches routed through Doppler Airlock.">long.xyz</button>
       <button data-pad="bankr" data-tip="Bankr launches on the same Airlock.">Bankr</button>
@@ -112,7 +112,7 @@
           <th>Price</th>
           <th>Volume 24h</th>
           <th data-tip="How much of the stock or metal token sits in the liquidity pool.">Asset locked</th>
-          <th data-tip="On-chain wrapper price vs last NYSE cash print.">Premium</th>
+          <th data-tip="On-chain wrapper price versus last NYSE cash print.">Premium</th>
           <th>Holders</th>
         </tr>
       </thead>
@@ -140,8 +140,8 @@
   </div>
 </footer>
 <p id="snap" hidden></p>
-<script src="snap.js?v=10"></script>
+<script src="snap.js?v=11"></script>
 <script src="app.js?v=9"></script>
-<script src="wire-ui.js?v=1"></script>
+<script src="wire-ui.js?v=2"></script>
 </body>
 </html>
