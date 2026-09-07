@@ -22,7 +22,9 @@ async function dex(address) {
     const data = await r.json();
     const pairs = data.pairs || [];
     const rh = pairs.filter((p) => p.chainId === "robinhood");
-    return { best: rh[0] || pairs[0] || null, all: rh.length ? rh : pairs };
+    const pool = rh.length ? rh : pairs;
+    pool.sort((a, b) => ((b.liquidity && b.liquidity.usd) || 0) - ((a.liquidity && a.liquidity.usd) || 0));
+    return { best: pool[0] || null, all: pool };
   } catch (e) {
     return null;
   }
@@ -34,20 +36,33 @@ function ipfs(uri) {
   return uri;
 }
 
+function keySocial(type, url) {
+  const u = String(url || "").toLowerCase().replace(/\/$/, "");
+  const t = String(type || "").toLowerCase();
+  if (t === "twitter" || u.includes("x.com") || u.includes("twitter.com")) return "x:" + u.replace("twitter.com", "x.com");
+  if (t === "telegram" || u.includes("t.me")) return "tg:" + u;
+  if (t === "discord" || u.includes("discord")) return "dc:" + u;
+  return "web:" + u;
+}
+
 function collectSocials(pairs) {
   const seen = new Set();
   const out = [];
   for (const p of pairs || []) {
     const info = p.info || {};
     for (const s of info.socials || []) {
-      if (!s || !s.url || seen.has(s.url)) continue;
-      seen.add(s.url);
+      if (!s || !s.url) continue;
+      const k = keySocial(s.type, s.url);
+      if (seen.has(k)) continue;
+      seen.add(k);
       out.push({ type: s.type || "social", url: s.url });
     }
     for (const w of info.websites || []) {
       const url = typeof w === "string" ? w : w && w.url;
-      if (!url || seen.has(url)) continue;
-      seen.add(url);
+      if (!url) continue;
+      const k = keySocial("website", url);
+      if (seen.has(k)) continue;
+      seen.add(k);
       out.push({ type: "website", url });
     }
   }
@@ -55,7 +70,7 @@ function collectSocials(pairs) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("Cache-Control", "s-maxage=30, stale-while-revalidate=120");
+  res.setHeader("Cache-Control", "s-maxage=20, stale-while-revalidate=60");
   const address = String(req.query.address || "").toLowerCase();
   if (!/^0x[a-f0-9]{40}$/.test(address)) {
     res.status(400).json({ error: "bad address" });
@@ -82,44 +97,51 @@ export default async function handler(req, res) {
       res.status(404).json({ error: "not found" });
       return;
     }
-    const stockSym = (coin && coin.pair) || (dx && dx.quoteToken && dx.quoteToken.symbol);
-    const stock = stockSym && dump.stocks ? dump.stocks[stockSym] : null;
-    const cash = stockSym ? await yahoo(stockSym) : null;
+    const quote = (dx && dx.quoteToken && dx.quoteToken.symbol) || (coin && coin.pair);
+    const stock = quote && dump.stocks ? dump.stocks[quote] : null;
+    const isEquity = Boolean(stock);
+    const cash = isEquity ? await yahoo(quote) : null;
     const info = (dx && dx.info) || {};
-    const socials = collectSocials(dxpack && dxpack.all);
     const logo = (coin && coin.logo) ? ("https://memefimarketcap.com/" + coin.logo) : null;
-    const logoDetail = (coin && coin.logoDetail) ? ("https://memefimarketcap.com/" + coin.logoDetail) : logo;
+    const created = dx && dx.pairCreatedAt;
+    const tx = dx && dx.txns && (dx.txns.h24 || dx.txns.h6);
     res.status(200).json({
       generated: dump.meta && dump.meta.generated,
       flagged,
+      isEquity,
       coin: {
         ticker: (coin && coin.ticker) || (dx && dx.baseToken && dx.baseToken.symbol),
         name: (coin && coin.name) || (dx && dx.baseToken && dx.baseToken.name),
         address,
-        poolId: (coin && coin.poolId) || (dx && dx.pairAddress),
-        pair: stockSym,
-        pairAddress: coin && coin.pairAddress,
-        launchpad: coin && coin.launchpad,
+        poolId: (dx && dx.pairAddress) || (coin && coin.poolId),
+        pair: quote,
+        pairAddress: (dx && dx.quoteToken && dx.quoteToken.address) || (coin && coin.pairAddress),
+        launchpad: (coin && coin.launchpad) || (dx && dx.dexId) || "dex",
         price: (dx && dx.priceUsd) || (coin && coin.price),
-        priceNative: (dx && dx.priceNative) || (coin && coin.priceNative),
+        priceNative: dx && dx.priceNative,
+        change1h: dx && dx.priceChange && dx.priceChange.h1,
+        change6h: dx && dx.priceChange && dx.priceChange.h6,
         change24h: dx && dx.priceChange && dx.priceChange.h24,
         marketCap: (dx && (dx.marketCap || dx.fdv)) || (coin && coin.marketCap),
+        fdv: dx && dx.fdv,
         volume24h: (dx && dx.volume && dx.volume.h24) || (coin && coin.volume24h),
         liquidityUsd: (dx && dx.liquidity && dx.liquidity.usd) || (coin && coin.liquidityUsd),
+        buys24h: tx && tx.buys,
+        sells24h: tx && tx.sells,
+        createdAt: created ? new Date(created).toISOString() : (coin && coin.launchedAt),
         stockLockedUnits: coin && coin.stockLockedUnits,
         stockLockedUsd: coin && coin.stockLockedUsd,
         holders: coin && (coin.holders || coin.holdersExclPoolManager || coin.holdersTotal),
-        launchedAt: coin && coin.launchedAt,
         lockedForever: coin && coin.lockedForever,
         lpFeePct: coin && coin.lpFeePct,
-        description: (coin && (coin.description || coin.lore)) || "",
         logo,
-        logoDetail,
+        logoDetail: (coin && coin.logoDetail) ? ("https://memefimarketcap.com/" + coin.logoDetail) : logo,
         imageUri: ipfs(coin && coin.imageUri),
         dexImage: info.imageUrl || null,
         banner: info.header || null,
-        socials,
-        dexUrl: dx && dx.url
+        socials: collectSocials(dxpack && dxpack.all),
+        dexUrl: dx && dx.url,
+        chain: (dx && dx.chainId) || "robinhood"
       },
       stock: stock && {
         symbol: stock.symbol,
