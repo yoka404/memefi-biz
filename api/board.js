@@ -30,6 +30,8 @@ function slim(c, rank, extra) {
     stockLockedUsd: c.stockLockedUsd != null ? c.stockLockedUsd : rep.stockLockedUsd,
     holders: c.holders || c.holdersExclPoolManager || c.holdersTotal || null,
     launchedAt: c.launchedAt,
+    logo: c.logo || null,
+    imageUri: c.imageUri || null,
     flagged: false,
     flag: null
   }, extra || {});
