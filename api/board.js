@@ -3,6 +3,7 @@ import { buildUniverse } from "../lib/indexer.js";
 import { fillHolders } from "../lib/blockscout.js";
 import { fillPads } from "../lib/airlock.js";
 import { fillDex } from "../lib/dex.js";
+import { fillOnchainLocked } from "../lib/locked.js";
 import { padGroup } from "../lib/pads.js";
 import { tokenSupply, latestBlock } from "../lib/rpc.js";
 
@@ -143,6 +144,8 @@ export default async function handler(req, res) {
     const world = Object.values(map).filter((c) => !looksScam(c));
     world.sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
     await fillDex(world.slice(0, 200), 80);
+    const onchain = (uni && uni.onchain) || {};
+    await fillOnchainLocked(world.slice(0, 80), onchain);
     const tape = world.filter(onTape).sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
     await fillHolders(world.slice(0, 80), 20);
     await fillPads(tape.slice(0, 40), 40);
@@ -156,12 +159,11 @@ export default async function handler(req, res) {
         if (px != null) quotes[s] = px;
       } catch (e) {}
     }));
-    const onchain = (uni && uni.onchain) || {};
     const util = await wrapperUtil(world, onchain);
     const head = await latestBlock();
     res.status(200).json({
       generated: uni && uni.generated,
-      source: "memefi-indexer+dex",
+      source: "memefi-indexer+rpc",
       wrappers: uni && uni.wrappers,
       aggregates: {
         coins: tape.length,
