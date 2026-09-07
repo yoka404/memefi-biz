@@ -1,12 +1,11 @@
 export const config = { maxDuration: 20 };
 
 const FEEDS = [
-  { source: "Yahoo Finance", url: "https://finance.yahoo.com/news/rssindex" },
-  { source: "Google News", url: "https://news.google.com/rss/search?q=stock-paired+memecoin+OR+%22tokenized+stock%22+meme+OR+Robinhood+Chain+memecoin&hl=en-US&gl=US&ceid=US:en" },
   { source: "Decrypt", url: "https://decrypt.co/feed" },
   { source: "The Block", url: "https://www.theblock.co/rss.xml" },
   { source: "CoinDesk", url: "https://www.coindesk.com/arc/outboundfeeds/rss/" },
-  { source: "Cointelegraph", url: "https://cointelegraph.com/rss" }
+  { source: "Cointelegraph", url: "https://cointelegraph.com/rss" },
+  { source: "Yahoo Finance", url: "https://finance.yahoo.com/news/rssindex" }
 ];
 
 const FALLBACK = [
@@ -15,30 +14,45 @@ const FALLBACK = [
   { source: "DefiPrime", title: "Quoted in Nvidia: the stock-paired memecoin boom, measured on-chain.", blurb: "AI/NVDA remains the deepest semiconductor pair.", url: "https://defiprime.com/stock-paired-memecoins", score: 8 }
 ];
 
+function decode(html) {
+  return String(html || "")
+    .replace(/<!\[CDATA\[|\]\]>/g, "")
+    .replace(/&/g, "&")
+    .replace(/"/g, '"')
+    .replace(/&#39;|'/g, "'")
+    .replace(/</g, "<")
+    .replace(/>/g, ">");
+}
+function strip(html) {
+  return decode(html).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
 function tag(block, name) {
   const cdata = block.match(new RegExp("<" + name + ">\\s*<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>", "i"));
   if (cdata) return cdata[1].trim();
   const plain = block.match(new RegExp("<" + name + ">([\\s\\S]*?)</" + name + ">", "i"));
   return plain ? plain[1].trim() : "";
 }
-function strip(html) {
-  return String(html || "")
-    .replace(/<!\[CDATA\[|\]\]>/g, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&/g, "&")
-    .replace(/"/g, '"')
-    .replace(/&#39;|'/g, "'")
-    .replace(/</g, "<")
-    .replace(/>/g, ">")
-    .replace(/\s+/g, " ")
-    .trim();
+function badImage(url) {
+  const u = String(url || "").toLowerCase();
+  if (!/^https?:/.test(u)) return true;
+  if (/news\.google|google\.com\/images|gstatic\.com|googleusercontent\.com\/icon|favicon|logo.*google|\/logo\./.test(u)) return true;
+  if (/\.(svg)(\?|$)/.test(u) && /google|mexc/.test(u)) return true;
+  return false;
 }
 function pickImage(chunk) {
-  const media = String(chunk).match(/<(?:media:content|media:thumbnail|enclosure)[^>]+(?:url|href)=["']([^"']+)["']/i);
-  if (media && media[1] && /^https?:/i.test(media[1])) return media[1];
-  const img = String(chunk).match(/<img[^>]+src=["']([^"']+)["']/i);
-  if (img && img[1] && /^https?:/i.test(img[1])) return img[1];
-  return null;
+  const hits = [];
+  const media = String(chunk).matchAll(/<(?:media:content|media:thumbnail|enclosure)[^>]+(?:url|href)=["']([^"']+)["']/ig);
+  for (const m of media) hits.push(decode(m[1]));
+  const imgs = String(chunk).matchAll(/<img[^>]+src=["']([^"']+)["']/ig);
+  for (const m of imgs) hits.push(decode(m[1]));
+  return hits.find((u) => !badImage(u)) || null;
+}
+function publisherUrl(chunk, link) {
+  const raw = decode(chunk);
+  const urls = raw.match(/https?:\/\/[^\s"'<>]+/g) || [];
+  const real = urls.find((u) => !/news\.google|google\.com\/rss/.test(u));
+  if (real) return real.replace(/[.,)]+$/, "");
+  return link;
 }
 function score(title, desc, source) {
   const t = (title + " " + desc + " " + source).toLowerCase();
@@ -49,8 +63,7 @@ function score(title, desc, source) {
   if (/\b(nvda|amc|gld|slv|hood|hims|gme|mstr)\b/.test(t) && /meme|token/.test(t)) s += 5;
   if (/memecoin|meme coin|tokenized/.test(t)) s += 2;
   if (/wrapper|premium|depeg|cash close/.test(t)) s += 3;
-  if (source === "Yahoo Finance" && /stock|market|nasdaq|nyse|etf/.test(t)) s += 3;
-  if (/bitcoin|ethereum only|nft drop/.test(t) && s < 4) s -= 3;
+  if (/bitcoin etf only|nft drop|airdrop/.test(t) && s < 4) s -= 3;
   return s;
 }
 function parseFeed(xml, fallbackSource) {
@@ -63,19 +76,18 @@ function parseFeed(xml, fallbackSource) {
       const alt = chunk.match(/<link[^>]+href="([^"]+)"/i);
       if (alt) link = alt[1];
     }
-    const desc = strip(tag(chunk, "description")).slice(0, 180);
     if (!title || !link) continue;
-    let source = fallbackSource;
-    const dash = title.match(/\s[-\u2013]\s([^\-\u2013]+)$/);
-    if (fallbackSource === "Google News" && dash) source = dash[1].trim();
+    const descRaw = tag(chunk, "description");
+    const desc = strip(descRaw).replace(/^https?:\/\/\S+$/, "").slice(0, 180);
+    const url = publisherUrl(descRaw + " " + chunk, link);
     out.push({
-      source,
-      title: title.replace(/\s[-\u2013]\s[^\-\u2013]+$/, "").trim(),
-      blurb: desc || "",
-      url: link,
+      source: fallbackSource,
+      title,
+      blurb: desc && !desc.startsWith("<") && !/^href=/.test(desc) ? desc : "",
+      url,
       image: pickImage(chunk),
       published: strip(tag(chunk, "pubDate")),
-      score: score(title, desc, source)
+      score: score(title, desc, fallbackSource)
     });
   }
   return out;
@@ -86,7 +98,7 @@ async function pull(feed) {
   try {
     const r = await fetch(feed.url, {
       signal: ctrl.signal,
-      headers: { "User-Agent": "memefi.biz wire/1.1", Accept: "application/rss+xml, application/xml, text/xml" }
+      headers: { "User-Agent": "memefi.biz wire/1.2", Accept: "application/rss+xml, application/xml, text/xml" }
     });
     if (!r.ok) return [];
     return parseFeed(await r.text(), feed.source);
@@ -97,6 +109,7 @@ async function pull(feed) {
   }
 }
 async function ogImage(url) {
+  if (!url || /news\.google/.test(url)) return null;
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 2500);
   try {
@@ -107,7 +120,8 @@ async function ogImage(url) {
     if (!r.ok) return null;
     const html = await r.text();
     const og = html.match(/property=["']og:image["'][^>]*content=["']([^"']+)["']/i) || html.match(/content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
-    return og && /^https?:/i.test(og[1]) ? og[1] : null;
+    const img = og && og[1];
+    return img && !badImage(img) ? img : null;
   } catch (e) {
     return null;
   } finally {
@@ -123,12 +137,12 @@ export default async function handler(req, res) {
     const key = (row.title || "").toLowerCase().slice(0, 80);
     if (!key || seen.has(key)) return false;
     seen.add(key);
-    return row.score >= 3;
+    return row.score >= 2;
   });
-  mixed.sort((a, b) => b.score - a.score);
+  mixed.sort((a, b) => b.score - a.score || ((b.image ? 1 : 0) - (a.image ? 1 : 0)));
   const items = (mixed.length ? mixed : FALLBACK).slice(0, 10);
-  await Promise.all(items.slice(0, 6).map(async (it) => {
-    if (it.image) return;
+  await Promise.all(items.map(async (it) => {
+    if (it.image && !badImage(it.image)) return;
     it.image = await ogImage(it.url);
   }));
   res.status(200).json({ generated: new Date().toISOString(), items });
