@@ -1,4 +1,5 @@
 export const config = { maxDuration: 30 };
+const METALS = new Set(["GLD","SLV"]);
 
 async function yahoo(symbol) {
   try {
@@ -13,7 +14,15 @@ async function yahoo(symbol) {
   }
 }
 
-async function dex(address) {
+function pairScore(p, stocks) {
+  const liq = (p.liquidity && p.liquidity.usd) || 0;
+  const q = p.quoteToken && p.quoteToken.symbol;
+  if (METALS.has(q)) return 3e12 + liq;
+  if (stocks && stocks[q]) return 2e12 + liq;
+  return liq;
+}
+
+async function dex(address, stocks) {
   try {
     const r = await fetch("https://api.dexscreener.com/latest/dex/tokens/" + address, {
       headers: { "User-Agent": "memefi.biz/1.0" }
@@ -23,7 +32,7 @@ async function dex(address) {
     const pairs = data.pairs || [];
     const rh = pairs.filter((p) => p.chainId === "robinhood");
     const pool = rh.length ? rh : pairs;
-    pool.sort((a, b) => ((b.liquidity && b.liquidity.usd) || 0) - ((a.liquidity && a.liquidity.usd) || 0));
+    pool.sort((a, b) => pairScore(b, stocks) - pairScore(a, stocks));
     return { best: pool[0] || null, all: pool };
   } catch (e) {
     return null;
@@ -91,7 +100,7 @@ export default async function handler(req, res) {
         coin = Object.assign({}, a, a.reported || {});
       }
     }
-    const dxpack = await dex(address);
+    const dxpack = await dex(address, dump.stocks || {});
     const dx = dxpack && dxpack.best;
     if (!coin && !dx) {
       res.status(404).json({ error: "not found" });
@@ -100,6 +109,7 @@ export default async function handler(req, res) {
     const quote = (dx && dx.quoteToken && dx.quoteToken.symbol) || (coin && coin.pair);
     const stock = quote && dump.stocks ? dump.stocks[quote] : null;
     const isEquity = Boolean(stock);
+    const isMetal = METALS.has(String(quote || "").toUpperCase());
     const cash = isEquity ? await yahoo(quote) : null;
     const info = (dx && dx.info) || {};
     const logo = (coin && coin.logo) ? ("https://memefimarketcap.com/" + coin.logo) : null;
@@ -109,6 +119,7 @@ export default async function handler(req, res) {
       generated: dump.meta && dump.meta.generated,
       flagged,
       isEquity,
+      isMetal,
       coin: {
         ticker: (coin && coin.ticker) || (dx && dx.baseToken && dx.baseToken.symbol),
         name: (coin && coin.name) || (dx && dx.baseToken && dx.baseToken.name),
