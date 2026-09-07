@@ -6,6 +6,7 @@ function padGroup(raw) {
   if (s.includes("feel")) return "feel";
   if (s.includes("flap")) return "flap";
   if (s.includes("o1") || s.includes("swapx")) return "o1";
+  if (s.includes("pair")) return "pair";
   return "other";
 }
 function padLabel(raw) {
@@ -15,7 +16,7 @@ function padLabel(raw) {
   if (s.includes("pons-v1") || s.includes("ponsv1")) return "Pons V1";
   if (s.includes("pons")) return "Pons";
   const g = padGroup(raw);
-  return { long: "long.xyz", bankr: "Bankr", feel: "feel.cash", flap: "Flap", o1: "o1" }[g] || raw || "other";
+  return { long: "long.xyz", bankr: "Bankr", feel: "feel.cash", flap: "Flap", o1: "o1", pair: "PAIR" }[g] || raw || "other";
 }
 function padPretty(raw) {
   return padLabel(raw);
@@ -31,5 +32,6 @@ function padUrl(raw, address, ticker) {
   if (g === "flap") return "https://flap.sh/robinhood/" + a;
   if (g === "pons") return "https://www.ponsfamily.com/launchpad/" + a;
   if (g === "o1") return "https://launch.o1.exchange/token/" + a;
+  if (g === "pair") return "https://pair.fund/tokens/" + a;
   return "https://rh-scan.com/token/" + a;
 }
