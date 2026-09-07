@@ -4,7 +4,7 @@ import { fillHolders } from "../lib/blockscout.js";
 import { fillPads } from "../lib/airlock.js";
 import { fillDex } from "../lib/dex.js";
 import { padGroup } from "../lib/pads.js";
-import { tokenSupply } from "../lib/rpc.js";
+import { tokenSupply, latestBlock } from "../lib/rpc.js";
 
 const YAHOO = ["AMC","NVDA","HIMS","MU","MSTR","TSLA","HOOD","AAPL","GME","SPY","MSFT","AMD","AMZN","META","GOOGL","NFLX","PLTR","INTC","BABA","COIN","RBLX","DJT","GLD","SLV","QQQ","IWM","COST","LLY","BB"];
 const PIN = "0x385f4f8ae47651ce5f58f5265395a669f8281e18".toLowerCase();
@@ -100,7 +100,7 @@ async function wrapperUtil(tape, onchain) {
   };
 }
 
-function buildSnapshot(uni, tape, util) {
+function buildSnapshot(uni, tape, util, headBlock) {
   const lockedUsd = tape.reduce((n, c) => n + (Number(c.stockLockedUsd) || 0), 0);
   const lockedKnown = tape.filter((c) => Number(c.stockLockedUsd) > 0).length;
   const vol = tape.reduce((n, c) => n + (Number(c.volume24h) || 0), 0);
@@ -122,7 +122,8 @@ function buildSnapshot(uni, tape, util) {
     holders: holders,
     movers: movers,
     locked: locked,
-    util: util || null
+    util: util || null,
+    headBlock: headBlock || null
   };
 }
 
@@ -157,6 +158,7 @@ export default async function handler(req, res) {
     }));
     const onchain = (uni && uni.onchain) || {};
     const util = await wrapperUtil(tape, onchain);
+    const head = await latestBlock();
     res.status(200).json({
       generated: uni && uni.generated,
       source: "memefi-indexer+dex",
@@ -168,7 +170,7 @@ export default async function handler(req, res) {
         metals: metals.length,
         volume24h: tape.reduce((n, c) => n + (Number(c.volume24h) || 0), 0)
       },
-      snapshot: buildSnapshot(uni, tape, util),
+      snapshot: buildSnapshot(uni, tape, util, head),
       quotes,
       onchain,
       logos: buildLogos((uni && uni.logos) || {}),
