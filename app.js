@@ -126,6 +126,7 @@ function renderRows(list) {
   const raw = (document.getElementById("q") && document.getElementById("q").value || "").trim();
   const quotes = (CACHE && CACHE.quotes) || {};
   const onchain = (CACHE && CACHE.onchain) || {};
+  const logos = (CACHE && CACHE.logos) || {};
   let filtered = list.filter((c) => {
     if (PAD !== "all" && PAD !== "metals" && padGroup(c.launchpad) !== PAD) return false;
     return matchesQuery(c, raw);
@@ -140,6 +141,7 @@ function renderRows(list) {
     const pr = fmtPrem(premium(wrap, cash));
     const href = c.address ? "/p/" + c.address : "";
     const imgs = pfp(c);
+    const sl = logos[c.pair];
     const flag = c.flagged ? `<small class="flag" data-tip="Excluded from the reference rank. Pool math looks impossible.">flagged</small>` : `<small>${padLabel(c.launchpad)}</small>`;
     return `<tr data-href="${href}" data-pool="${c.poolId || ""}">
       <td class="num">${i + 1}</td>
@@ -149,7 +151,7 @@ function renderRows(list) {
           <span class="nm"><strong>${c.name || c.ticker} <span>${c.ticker}</span></strong>${flag}</span>
         </a>
       </td>
-      <td><div class="stock"><b>${c.pair || "—"}</b><em>${wrap != null ? fmtPx(wrap) : "—"}</em></div></td>
+      <td><div class="stock">${sl ? `<img class="stock-logo" src="${sl}" alt="" width="18" height="18" loading="lazy"/>` : ""}<span><b>${c.pair || "—"}</b><em>${wrap != null ? fmtPx(wrap) : "—"}</em></span></div></td>
       <td class="px">${fmtPx(c.price)}</td>
       <td class="${chg.cls}">${chg.text}</td>
       <td class="mcap">${fmtUsd(c.marketCap)}</td>
