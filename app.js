@@ -241,6 +241,27 @@ async function refresh() {
   }
 }
 
+async function loadWire() {
+  const ul = document.getElementById("wire-list");
+  if (!ul) return;
+  try {
+    const r = await fetch("/api/wire");
+    if (!r.ok) return;
+    const data = await r.json();
+    const items = data.items || [];
+    if (!items.length) return;
+    ul.innerHTML = items.map((it) => {
+      const src = String(it.source || "Wire").replace(/</g, "");
+      const title = String(it.title || "").replace(/</g, "");
+      const blurb = String(it.blurb || "").replace(/</g, "");
+      const href = String(it.url || "#").replace(/"/g, "");
+      return `<li><a href="${href}" target="_blank" rel="noopener"><em>${src}</em><strong>${title}</strong><span>${blurb}</span></a></li>`;
+    }).join("");
+    const tag = document.getElementById("wire-tag");
+    if (tag) tag.textContent = "Live";
+  } catch (e) {}
+}
+
 document.addEventListener("click", (e) => {
   const t = e.target;
   if (t && t.dataset && t.dataset.tab) {
@@ -263,5 +284,7 @@ document.addEventListener("input", (e) => {
 });
 
 refresh();
+loadWire();
 setInterval(refresh, 60000);
 setInterval(tickLive, 1000);
+setInterval(loadWire, 180000);
