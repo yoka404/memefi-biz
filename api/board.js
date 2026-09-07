@@ -4,6 +4,7 @@ import { fillHolders } from "../lib/blockscout.js";
 import { fillPads } from "../lib/airlock.js";
 import { fillDex } from "../lib/dex.js";
 import { padGroup } from "../lib/pads.js";
+import { tokenSupply } from "../lib/rpc.js";
 
 const YAHOO = ["AMC","NVDA","HIMS","MU","MSTR","TSLA","HOOD","AAPL","GME","SPY","MSFT","AMD","AMZN","META","GOOGL","NFLX","PLTR","INTC","BABA","COIN","RBLX","DJT","GLD","SLV","QQQ","IWM","COST","LLY","BB"];
 const PIN = "0x385f4f8ae47651ce5f58f5265395a669f8281e18".toLowerCase();
@@ -73,7 +74,33 @@ function lite(c) {
   };
 }
 
-function buildSnapshot(uni, tape) {
+async function wrapperUtil(tape, onchain) {
+  const by = {};
+  for (const c of tape || []) {
+    const sym = String(c.pair || "").toUpperCase();
+    if (!sym) continue;
+    if (!by[sym]) by[sym] = { symbol: sym, lockedUsd: 0, stockAddress: null };
+    by[sym].lockedUsd += Number(c.stockLockedUsd) || 0;
+    if (!by[sym].stockAddress && c.stockAddress) by[sym].stockAddress = c.stockAddress;
+  }
+  const rows = Object.values(by).sort((a, b) => b.lockedUsd - a.lockedUsd).slice(0, 8);
+  await Promise.all(rows.map(async (row) => {
+    row.onchain = onchain && onchain[row.symbol] != null ? Number(onchain[row.symbol]) : null;
+    row.supply = row.stockAddress ? await tokenSupply(row.stockAddress) : null;
+    row.aum = (row.supply != null && row.onchain != null) ? row.supply * row.onchain : null;
+    row.pct = (row.aum > 0) ? (row.lockedUsd / row.aum) * 100 : null;
+  }));
+  const aum = rows.reduce((n, r) => n + (Number(r.aum) || 0), 0);
+  const locked = rows.reduce((n, r) => n + (Number(r.lockedUsd) || 0), 0);
+  return {
+    rows,
+    aum: aum || null,
+    locked: locked || null,
+    pct: aum > 0 ? (locked / aum) * 100 : null
+  };
+}
+
+function buildSnapshot(uni, tape, util) {
   const lockedUsd = tape.reduce((n, c) => n + (Number(c.stockLockedUsd) || 0), 0);
   const lockedKnown = tape.filter((c) => Number(c.stockLockedUsd) > 0).length;
   const vol = tape.reduce((n, c) => n + (Number(c.volume24h) || 0), 0);
@@ -94,7 +121,8 @@ function buildSnapshot(uni, tape) {
     volume24h: vol,
     holders: holders,
     movers: movers,
-    locked: locked
+    locked: locked,
+    util: util || null
   };
 }
 
@@ -127,6 +155,8 @@ export default async function handler(req, res) {
         if (px != null) quotes[s] = px;
       } catch (e) {}
     }));
+    const onchain = (uni && uni.onchain) || {};
+    const util = await wrapperUtil(tape, onchain);
     res.status(200).json({
       generated: uni && uni.generated,
       source: "memefi-indexer+dex",
@@ -138,9 +168,9 @@ export default async function handler(req, res) {
         metals: metals.length,
         volume24h: tape.reduce((n, c) => n + (Number(c.volume24h) || 0), 0)
       },
-      snapshot: buildSnapshot(uni, tape),
+      snapshot: buildSnapshot(uni, tape, util),
       quotes,
-      onchain: (uni && uni.onchain) || {},
+      onchain,
       logos: buildLogos((uni && uni.logos) || {}),
       top: tape,
       newest,
