@@ -28,6 +28,17 @@ function goodImg(url) {
 function cover(src) {
   return '<div class="ph" style="--h:' + hue(src) + '"><em>' + src + '</em></div>';
 }
+function failShot(el) {
+  const src = el.getAttribute("data-srcname") || "Wire";
+  const box = document.createElement("div");
+  box.className = "ph";
+  box.style.setProperty("--h", String(hue(src)));
+  const em = document.createElement("em");
+  em.textContent = src;
+  box.appendChild(em);
+  el.replaceWith(box);
+}
+window.failShot = failShot;
 function paintWire(items) {
   const track = document.getElementById("wire-track");
   const dots = document.getElementById("wire-dots");
@@ -44,7 +55,7 @@ function paintWire(items) {
     const title = clean(it.title || "");
     const blurb = okBlurb(clean(it.blurb || ""));
     const photo = goodImg(img)
-      ? '<img src="' + img + '" alt="" loading="' + (i ? "lazy" : "eager") + '" onerror="this.outerHTML=this.getAttribute(\'data-ph\')" data-ph="' + cover(src).replace(/"/g, '"') + '"/>'
+      ? '<img src="' + img + '" alt="" loading="' + (i ? "lazy" : "eager") + '" data-srcname="' + src.replace(/"/g, "") + '" onerror="failShot(this)"/>'
       : cover(src);
     return '<a class="wire-card" href="' + href + '" target="_blank" rel="noopener">' +
       '<div class="shot">' + photo + '</div>' +
