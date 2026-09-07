@@ -124,14 +124,14 @@ function renderRows(list) {
   const raw = (document.getElementById("q") && document.getElementById("q").value || "").trim();
   const quotes = (CACHE && CACHE.quotes) || {};
   const onchain = (CACHE && CACHE.onchain) || {};
-  const filtered = list.filter((c) => {
+  let filtered = list.filter((c) => {
     if (PAD !== "all" && PAD !== "metals" && padGroup(c.launchpad) !== PAD) return false;
     return matchesQuery(c, raw);
-  });
+  }).map(rowCoin);
+  if (TAB !== "new") filtered.sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
   const rows = document.getElementById("rows");
   const looksAddr = /^0x[a-fA-F0-9]{40}$/.test(raw);
-  rows.innerHTML = filtered.map((base, i) => {
-    const c = rowCoin(base);
+  rows.innerHTML = filtered.map((c, i) => {
     const chg = fmtChg(c.change24h);
     const wrap = c._wrap != null ? c._wrap : onchain[c.pair];
     const cash = quotes[c.pair];
@@ -140,7 +140,7 @@ function renderRows(list) {
     const imgs = pfp(c);
     const flag = c.flagged ? `<small class="flag" data-tip="Excluded from the reference rank. Pool math looks impossible.">flagged</small>` : `<small>${padLabel(c.launchpad)}</small>`;
     return `<tr data-href="${href}" data-pool="${c.poolId || ""}">
-      <td class="num">${c.rank || i + 1}</td>
+      <td class="num">${i + 1}</td>
       <td>
         <a class="pair namecell" href="${href}">
           <img src="${imgs[0] || ""}" data-alts="${imgs.slice(1).join("|")}" alt="" onerror="(function(el){var a=(el.getAttribute('data-alts')||'').split('|').filter(Boolean);if(!a.length){el.onerror=null;el.removeAttribute('src');return;}el.src=a.shift();el.setAttribute('data-alts',a.join('|'));})(this)"/>
