@@ -5,6 +5,7 @@ import { fillHolders } from "../lib/blockscout.js";
 const YAHOO = ["AMC","NVDA","HIMS","MU","MSTR","TSLA","HOOD","AAPL","GME","SPY","MSFT","AMD","AMZN","META","GOOGL","NFLX","PLTR","INTC","BABA","COIN","RBLX","DJT","GLD","SLV","QQQ","IWM"];
 const PIN = "0x385f4f8ae47651ce5f58f5265395a669f8281e18".toLowerCase();
 const PIN_GG = "0xcacb0e9caccee63ec4d82952e561a291c68bcb68".toLowerCase();
+const JUNK = /^(test|asdf|qwer|xxxx|zzzz|aaaa|abcd|foo|bar|xxx)/i;
 
 async function yahoo(symbol) {
   const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(symbol) + "?interval=1d&range=5d";
@@ -21,6 +22,21 @@ function pickHolders(c) {
   return Number.isFinite(x) ? x : null;
 }
 
+function pickMcap(live, base) {
+  const lm = Number(live && live.marketCap);
+  const bm = Number(base && base.marketCap);
+  const liq = Number((live && live.liquidityUsd) || (base && base.liquidityUsd));
+  if (Number.isFinite(lm) && Number.isFinite(bm) && bm > 0) {
+    if (lm > 5e8 && bm < 5e8) return bm;
+    if (lm / bm > 8) return bm;
+  }
+  if (Number.isFinite(lm) && Number.isFinite(liq) && liq > 0 && lm / liq > 400 && Number.isFinite(bm)) return bm;
+  if (Number.isFinite(lm) && lm > 4e8 && !Number.isFinite(bm)) return null;
+  if (Number.isFinite(lm)) return lm;
+  if (Number.isFinite(bm)) return bm;
+  return null;
+}
+
 function slimDump(c, extra) {
   const rep = c.reported || {};
   return Object.assign({
@@ -34,6 +50,7 @@ function slimDump(c, extra) {
     change24h: c.change24h,
     marketCap: c.marketCap != null ? c.marketCap : rep.marketCap,
     volume24h: c.volume24h,
+    liquidityUsd: c.liquidityUsd != null ? c.liquidityUsd : rep.liquidityUsd,
     stockLockedUnits: c.stockLockedUnits != null ? c.stockLockedUnits : rep.stockLockedUnits,
     stockLockedUsd: c.stockLockedUsd != null ? c.stockLockedUsd : rep.stockLockedUsd,
     holders: pickHolders(c),
@@ -41,25 +58,45 @@ function slimDump(c, extra) {
     logo: c.logo || null,
     imageUri: c.imageUri || null,
     flagged: false,
-    flag: null
+    flag: null,
+    listed: true
   }, extra || {});
 }
 
 function mergeRow(base, live) {
   if (!live) return base;
-  return Object.assign({}, base, live, {
-    holders: live.holders != null ? live.holders : base.holders,
-    stockLockedUnits: live.stockLockedUnits != null ? live.stockLockedUnits : base.stockLockedUnits,
-    stockLockedUsd: live.stockLockedUsd != null ? live.stockLockedUsd : base.stockLockedUsd,
-    logo: base.logo || live.logo,
-    imageUri: base.imageUri || live.imageUri,
-    marketCap: live.marketCap != null ? live.marketCap : base.marketCap,
-    price: live.price != null ? live.price : base.price,
-    volume24h: live.volume24h != null ? live.volume24h : base.volume24h,
-    change24h: live.change24h != null ? live.change24h : base.change24h,
-    pair: live.pair || base.pair,
-    poolId: live.poolId || base.poolId
+  const row = Object.assign({}, base, live, {
+    holders: (base && base.holders != null) ? base.holders : live.holders,
+    stockLockedUnits: (base && base.stockLockedUnits != null) ? base.stockLockedUnits : live.stockLockedUnits,
+    stockLockedUsd: (base && base.stockLockedUsd != null) ? base.stockLockedUsd : live.stockLockedUsd,
+    logo: (base && base.logo) || live.logo,
+    imageUri: (base && base.imageUri) || live.imageUri,
+    marketCap: pickMcap(live, base),
+    price: live.price != null ? live.price : (base && base.price),
+    volume24h: live.volume24h != null ? live.volume24h : (base && base.volume24h),
+    change24h: live.change24h != null ? live.change24h : (base && base.change24h),
+    pair: (base && base.pair) || live.pair,
+    poolId: live.poolId || (base && base.poolId),
+    listed: Boolean(base && base.listed),
+    liquidityUsd: live.liquidityUsd != null ? live.liquidityUsd : (base && base.liquidityUsd)
   });
+  return row;
+}
+
+function onTape(c) {
+  if (!c || !c.address) return false;
+  if (c.address === PIN || c.address === PIN_GG) return true;
+  const tick = String(c.ticker || "");
+  const name = String(c.name || "");
+  if (JUNK.test(tick) || JUNK.test(name.replace(/\s+/g, ""))) return false;
+  if (/testasdas|asdasd|qwerty/i.test(tick + name)) return false;
+  const mcap = Number(c.marketCap);
+  const liq = Number(c.liquidityUsd);
+  if (Number.isFinite(mcap) && mcap > 4e8 && !c.listed) return false;
+  if (Number.isFinite(mcap) && mcap > 1e9) return false;
+  if (Number.isFinite(liq) && liq > 0 && liq < 100 && Number.isFinite(mcap) && mcap > 1e6) return false;
+  if (!c.listed && Number.isFinite(liq) && liq < 100) return false;
+  return true;
 }
 
 export default async function handler(req, res) {
@@ -84,20 +121,21 @@ export default async function handler(req, res) {
       for (const c of dump.anomalies) {
         if (!c || !c.address) continue;
         const addr = String(c.address).toLowerCase();
-        map[addr] = slimDump(c, { flagged: true, flag: c.gate || c.why || "anomalous" });
+        map[addr] = slimDump(c, { flagged: true, flag: c.gate || c.why || "anomalous", listed: false });
       }
     }
     for (const c of (uni && uni.coins) || []) {
       const addr = String(c.address || "").toLowerCase();
       if (!addr) continue;
-      map[addr] = mergeRow(map[addr] || {}, c);
+      map[addr] = mergeRow(map[addr] || { listed: false }, c);
     }
-    if (!map[PIN]) map[PIN] = { ticker: "MEME", name: "A Meme Coin", address: PIN, pair: "AMC", launchpad: "long", flagged: true, flag: "pinned" };
-    if (!map[PIN_GG]) map[PIN_GG] = { ticker: "GG", name: "Golden Goose", address: PIN_GG, pair: "GLD", launchpad: "uniswap" };
-    const coins = Object.values(map).sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
+    if (!map[PIN]) map[PIN] = { ticker: "MEME", name: "A Meme Coin", address: PIN, pair: "AMC", launchpad: "long", flagged: true, flag: "pinned", listed: false };
+    if (!map[PIN_GG]) map[PIN_GG] = { ticker: "GG", name: "Golden Goose", address: PIN_GG, pair: "GLD", launchpad: "uniswap", listed: true };
+    const raw = Object.values(map);
+    const coins = raw.filter(onTape).sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
     await fillHolders(coins.slice(0, 40), 12);
     coins.forEach((c, i) => { c.rank = i + 1; });
-    const metals = coins.filter((c) => c.pair === "GLD" || c.pair === "SLV").sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
+    const metals = coins.filter((c) => c.pair === "GLD" || c.pair === "SLV");
     const newest = coins.slice().sort((a, b) => String(b.createdAt || b.launchedAt || "").localeCompare(String(a.createdAt || a.launchedAt || ""))).slice(0, 80);
     const quotes = {};
     await Promise.all(YAHOO.map(async (s) => {
@@ -118,7 +156,7 @@ export default async function handler(req, res) {
       wrappers: uni && uni.wrappers,
       aggregates: {
         coins: coins.length,
-        listed: coins.length,
+        listed: coins.filter((c) => c.listed).length,
         launches: dump && dump.listing && dump.listing.totalLaunchesOnChain,
         metals: metals.length,
         volume24h: coins.reduce((n, c) => n + (Number(c.volume24h) || 0), 0)
