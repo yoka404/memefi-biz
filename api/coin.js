@@ -20,8 +20,9 @@ async function dex(address) {
     });
     if (!r.ok) return null;
     const data = await r.json();
-    const pairs = (data.pairs || []).filter((p) => p.chainId === "robinhood");
-    return pairs[0] || (data.pairs && data.pairs[0]) || null;
+    const pairs = data.pairs || [];
+    const rh = pairs.filter((p) => p.chainId === "robinhood");
+    return { best: rh[0] || pairs[0] || null, all: rh.length ? rh : pairs };
   } catch (e) {
     return null;
   }
@@ -31,6 +32,26 @@ function ipfs(uri) {
   if (!uri) return null;
   if (uri.startsWith("ipfs://")) return "https://ipfs.io/ipfs/" + uri.slice(7);
   return uri;
+}
+
+function collectSocials(pairs) {
+  const seen = new Set();
+  const out = [];
+  for (const p of pairs || []) {
+    const info = p.info || {};
+    for (const s of info.socials || []) {
+      if (!s || !s.url || seen.has(s.url)) continue;
+      seen.add(s.url);
+      out.push({ type: s.type || "social", url: s.url });
+    }
+    for (const w of info.websites || []) {
+      const url = typeof w === "string" ? w : w && w.url;
+      if (!url || seen.has(url)) continue;
+      seen.add(url);
+      out.push({ type: "website", url });
+    }
+  }
+  return out;
 }
 
 export default async function handler(req, res) {
@@ -55,7 +76,8 @@ export default async function handler(req, res) {
         coin = Object.assign({}, a, a.reported || {});
       }
     }
-    const dx = await dex(address);
+    const dxpack = await dex(address);
+    const dx = dxpack && dxpack.best;
     if (!coin && !dx) {
       res.status(404).json({ error: "not found" });
       return;
@@ -64,14 +86,7 @@ export default async function handler(req, res) {
     const stock = stockSym && dump.stocks ? dump.stocks[stockSym] : null;
     const cash = stockSym ? await yahoo(stockSym) : null;
     const info = (dx && dx.info) || {};
-    const socials = [];
-    for (const s of info.socials || []) {
-      if (s && s.url) socials.push({ type: s.type || "social", url: s.url });
-    }
-    for (const w of info.websites || []) {
-      const url = typeof w === "string" ? w : w && w.url;
-      if (url) socials.push({ type: "website", url });
-    }
+    const socials = collectSocials(dxpack && dxpack.all);
     const logo = (coin && coin.logo) ? ("https://memefimarketcap.com/" + coin.logo) : null;
     const logoDetail = (coin && coin.logoDetail) ? ("https://memefimarketcap.com/" + coin.logoDetail) : logo;
     res.status(200).json({
@@ -102,7 +117,9 @@ export default async function handler(req, res) {
         logoDetail,
         imageUri: ipfs(coin && coin.imageUri),
         dexImage: info.imageUrl || null,
-        socials
+        banner: info.header || null,
+        socials,
+        dexUrl: dx && dx.url
       },
       stock: stock && {
         symbol: stock.symbol,
