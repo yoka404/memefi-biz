@@ -202,9 +202,9 @@ function renderRows(list) {
         </a>
       </td>
       <td><div class="stock"><img class="stock-logo" src="${sl[0] || ""}" data-key="${c.pair || ""}" data-alts="${sl.slice(1).join("|")}" alt="" width="18" height="18" loading="lazy" onload="if(this.dataset.key)window.__STK_OK[this.dataset.key]=this.src" onerror="(function(el){var a=(el.getAttribute('data-alts')||'').split('|').filter(Boolean);if(!a.length){el.onerror=null;el.removeAttribute('src');return;}el.src=a.shift();el.setAttribute('data-alts',a.join('|'));})(this)"/><span><b>${c.pair || "—"}</b><em>${wrap != null ? fmtPx(wrap) : "—"}</em></span></div></td>
-      <td class="px">${fmtPx(c.price)}</td>
-      <td class="${chg.cls}">${chg.text}</td>
       <td class="mcap">${fmtUsd(c.marketCap)}</td>
+      <td class="${chg.cls}">${chg.text}</td>
+      <td class="px">${fmtPx(c.price)}</td>
       <td class="vol">${fmtUsd(c.volume24h)}</td>
       <td class="locked"><b>${c.stockLockedUnits != null ? fmtNum(c.stockLockedUnits) + " " + (c.pair || "") : "—"}</b><small>${fmtUsd(c.stockLockedUsd)}</small></td>
       <td class="${pr.cls}">${pr.text}</td>
@@ -240,36 +240,7 @@ function paint() {
     snap.classList.remove("waiting");
   }
   renderRows(visibleList());
-  const focus = (CACHE.metals || []).find((c) => String(c.address || "").toLowerCase() === "0xcacb0e9caccee63ec4d82952e561a291c68bcb68") ||
-    (CACHE.top || []).find((c) => String(c.address || "").toLowerCase() === "0x385f4f8ae47651ce5f58f5265395a669f8281e18") ||
-    (CACHE.top || []).find((c) => c.ticker === "AI") || (CACHE.top || [])[0];
-  if (focus) {
-    const c = rowCoin(focus);
-    const el = document.getElementById("px");
-    if (el) { el.textContent = fmtPx(c.price).replace(/^\$/, ""); el.classList.remove("waiting"); }
-    const chg = fmtChg(c.change24h);
-    const s = document.getElementById("pxchg");
-    if (s) { s.textContent = chg.text; s.className = chg.cls; }
-    const wrap = c._wrap != null ? c._wrap : CACHE.onchain[c.pair];
-    const under = document.getElementById("under");
-    if (under && wrap != null) { under.textContent = fmtPx(wrap).replace(/^\$/, ""); under.classList.remove("waiting"); }
-    const cash = CACHE.quotes[c.pair];
-    const premEl = document.getElementById("prem");
-    if (premEl) {
-      const pr = fmtPrem(premium(wrap, cash));
-      premEl.textContent = pr.text;
-      premEl.className = pr.cls;
-    }
-    const lab = document.getElementById("focus-lab");
-    if (lab) lab.textContent = c.ticker;
-    const ulab = document.getElementById("under-lab");
-    if (ulab) ulab.textContent = (c.pair || "") + " on-chain";
-    const plab = document.getElementById("prem-lab");
-    if (plab) {
-      plab.textContent = (c.pair || "") + " premium";
-      plab.setAttribute("data-tip", "On-chain wrapper versus last NYSE cash print.");
-    }
-  }
+  if (window.paintSnapshot && CACHE.snapshot) window.paintSnapshot(CACHE.snapshot);
 }
 
 async function tickLive() {
