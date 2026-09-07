@@ -17,6 +17,9 @@ function padLabel(raw) {
   const g = padGroup(raw);
   return { long: "long.xyz", bankr: "Bankr", feel: "feel.cash", flap: "Flap", o1: "o1" }[g] || raw || "other";
 }
+function padPretty(raw) {
+  return padLabel(raw);
+}
 function padUrl(raw, address, ticker) {
   const a = String(address || "").toLowerCase();
   const t = encodeURIComponent(String(ticker || "").toLowerCase());
