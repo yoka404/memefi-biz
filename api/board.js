@@ -6,6 +6,17 @@ const YAHOO = ["AMC","NVDA","HIMS","MU","MSTR","TSLA","HOOD","AAPL","GME","SPY",
 const PIN = "0x385f4f8ae47651ce5f58f5265395a669f8281e18".toLowerCase();
 const PIN_GG = "0xcacb0e9caccee63ec4d82952e561a291c68bcb68".toLowerCase();
 const JUNK = /^(test|asdf|qwer|xxxx|zzzz|aaaa|abcd|foo|bar|xxx)/i;
+const TRUSTED = new Set(["long", "bankr", "feel", "flap", "pons"]);
+
+function padGroup(raw) {
+  const s = String(raw || "").toLowerCase();
+  if (s.includes("pons")) return "pons";
+  if (s.includes("long")) return "long";
+  if (s.includes("bankr")) return "bankr";
+  if (s.includes("feel")) return "feel";
+  if (s.includes("flap")) return "flap";
+  return "other";
+}
 
 async function yahoo(symbol) {
   const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(symbol) + "?interval=1d&range=5d";
@@ -65,7 +76,7 @@ function slimDump(c, extra) {
 
 function mergeRow(base, live) {
   if (!live) return base;
-  const row = Object.assign({}, base, live, {
+  return Object.assign({}, base, live, {
     holders: (base && base.holders != null) ? base.holders : live.holders,
     stockLockedUnits: (base && base.stockLockedUnits != null) ? base.stockLockedUnits : live.stockLockedUnits,
     stockLockedUsd: (base && base.stockLockedUsd != null) ? base.stockLockedUsd : live.stockLockedUsd,
@@ -80,23 +91,29 @@ function mergeRow(base, live) {
     listed: Boolean(base && base.listed),
     liquidityUsd: live.liquidityUsd != null ? live.liquidityUsd : (base && base.liquidityUsd)
   });
-  return row;
 }
 
-function onTape(c) {
-  if (!c || !c.address) return false;
-  if (c.address === PIN || c.address === PIN_GG) return true;
+function looksScam(c) {
+  if (!c) return true;
+  if (c.address === PIN || c.address === PIN_GG) return false;
+  if (c.flagged) return true;
   const tick = String(c.ticker || "");
-  const name = String(c.name || "");
-  if (JUNK.test(tick) || JUNK.test(name.replace(/\s+/g, ""))) return false;
-  if (/testasdas|asdasd|qwerty/i.test(tick + name)) return false;
+  const name = String(c.name || "").replace(/\s+/g, "");
+  if (JUNK.test(tick) || JUNK.test(name)) return true;
+  if (/testasdas|asdasd|qwerty|aaaaaa/i.test(tick + name)) return true;
   const mcap = Number(c.marketCap);
   const liq = Number(c.liquidityUsd);
-  if (Number.isFinite(mcap) && mcap > 4e8 && !c.listed) return false;
-  if (Number.isFinite(mcap) && mcap > 1e9) return false;
-  if (Number.isFinite(liq) && liq > 0 && liq < 100 && Number.isFinite(mcap) && mcap > 1e6) return false;
-  if (!c.listed && Number.isFinite(liq) && liq < 100) return false;
-  return true;
+  if (Number.isFinite(mcap) && mcap > 1e9) return true;
+  if (Number.isFinite(mcap) && mcap > 4e8 && !c.listed) return true;
+  if (c.holders === 0 && Number.isFinite(mcap) && mcap > 5e5 && !c.listed) return true;
+  if (Number.isFinite(liq) && liq > 0 && liq < 100 && Number.isFinite(mcap) && mcap > 1e6) return true;
+  return false;
+}
+
+function isTrusted(c) {
+  if (!c) return false;
+  if (c.address === PIN || c.address === PIN_GG) return true;
+  return TRUSTED.has(padGroup(c.launchpad));
 }
 
 export default async function handler(req, res) {
@@ -131,12 +148,12 @@ export default async function handler(req, res) {
     }
     if (!map[PIN]) map[PIN] = { ticker: "MEME", name: "A Meme Coin", address: PIN, pair: "AMC", launchpad: "long", flagged: true, flag: "pinned", listed: false };
     if (!map[PIN_GG]) map[PIN_GG] = { ticker: "GG", name: "Golden Goose", address: PIN_GG, pair: "GLD", launchpad: "uniswap", listed: true };
-    const raw = Object.values(map);
-    const coins = raw.filter(onTape).sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
-    await fillHolders(coins.slice(0, 40), 12);
-    coins.forEach((c, i) => { c.rank = i + 1; });
-    const metals = coins.filter((c) => c.pair === "GLD" || c.pair === "SLV");
-    const newest = coins.slice().sort((a, b) => String(b.createdAt || b.launchedAt || "").localeCompare(String(a.createdAt || a.launchedAt || ""))).slice(0, 80);
+    const raw = Object.values(map).filter((c) => !looksScam(c));
+    const trusted = raw.filter(isTrusted).sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
+    await fillHolders(trusted.slice(0, 40), 8);
+    trusted.forEach((c, i) => { c.rank = i + 1; });
+    const metals = trusted.filter((c) => c.pair === "GLD" || c.pair === "SLV");
+    const newest = trusted.slice().sort((a, b) => String(b.createdAt || b.launchedAt || "").localeCompare(String(a.createdAt || a.launchedAt || ""))).slice(0, 80);
     const quotes = {};
     await Promise.all(YAHOO.map(async (s) => {
       try {
@@ -155,19 +172,19 @@ export default async function handler(req, res) {
       source: uni && uni.coins && uni.coins.length ? "memefi-indexer+registry" : "registry",
       wrappers: uni && uni.wrappers,
       aggregates: {
-        coins: coins.length,
-        listed: coins.filter((c) => c.listed).length,
+        coins: trusted.length,
+        listed: trusted.filter((c) => c.listed).length,
         launches: dump && dump.listing && dump.listing.totalLaunchesOnChain,
         metals: metals.length,
-        volume24h: coins.reduce((n, c) => n + (Number(c.volume24h) || 0), 0)
+        volume24h: trusted.reduce((n, c) => n + (Number(c.volume24h) || 0), 0)
       },
       quotes,
       onchain,
       logos: (uni && uni.logos) || {},
-      top: coins.slice(0, 250),
+      top: trusted.slice(0, 250),
       newest,
       metals,
-      flagged: coins.filter((c) => c.flagged)
+      flagged: raw.filter((c) => c.flagged)
     });
   } catch (e) {
     res.status(502).json({ error: String(e.message || e) });
