@@ -19,11 +19,12 @@
   <div class="hero-text">
     <p class="eyebrow">News aggregator and prices</p>
     <h1>The tape after<br>the punchline.</h1>
-    <p class="lede">On-chain stock tokens versus the cash close. Premium is wrapper price divided by the last NYSE print. When cash is shut, authorized participants cannot mint.</p>
+    <p class="lede">Every stock-paired memecoin on Robinhood Chain, ranked. Premium is the on-chain wrapper versus the last cash print. New listings appear as launchpads route through the same airlock.</p>
+    <p class="snap" id="snap">Loading universe…</p>
     <div class="pills">
-      <div><em>MEME</em><b id="px">—</b><s id="pxchg"></s></div>
-      <div><em>AMC on-chain</em><b id="under">—</b></div>
-      <div><em>AMC premium</em><b id="prem">—</b></div>
+      <div><em id="focus-lab">MEME</em><b id="px">—</b><s id="pxchg"></s></div>
+      <div><em id="under-lab">AMC on-chain</em><b id="under">—</b></div>
+      <div><em id="prem-lab">AMC premium</em><b id="prem">—</b></div>
     </div>
   </div>
   <figure>
@@ -32,19 +33,21 @@
   </figure>
 </section>
 
-<section class="layout">
+<section class="layout full">
   <article class="card wide">
-    <div class="card-head"><h2>Prices</h2><span id="session">Stock-paired</span></div>
+    <div class="card-head">
+      <h2>Prices</h2>
+      <span id="session">Stock-paired</span>
+    </div>
+    <div class="toolbar">
+      <button data-tab="top" class="on">Top</button>
+      <button data-tab="new">New</button>
+      <input id="q" placeholder="Search ticker, name, stock" autocomplete="off"/>
+    </div>
     <table>
-      <thead><tr><th>Meme</th><th>Stock</th><th>Last</th><th>24h</th><th>On-chain</th><th>Cash</th><th>Premium</th><th>Volume</th></tr></thead>
-      <tbody id="rows"><tr><td colspan="8">Loading live pairs…</td></tr></tbody>
+      <thead><tr><th>Meme</th><th>Stock</th><th>Last</th><th>24h</th><th>Mcap</th><th>On-chain</th><th>Cash</th><th>Premium</th><th>Locked</th><th>Volume</th></tr></thead>
+      <tbody id="rows"><tr><td colspan="10">Loading universe…</td></tr></tbody>
     </table>
-  </article>
-  <article class="card">
-    <div class="card-head"><h2>Wire</h2><span>Paper</span></div>
-    <ul id="wire">
-      <li><time>Desk</time>Premium compares the tokenized stock in the pair to the last cash print. SPCX has no listed close.</li>
-    </ul>
   </article>
 </section>
 
@@ -53,10 +56,10 @@
   <div>
     <p class="eyebrow">Native pair</p>
     <h2>$MEMEFI / HOOD</h2>
-    <p>The desk token is not live. Board prints are DexScreener. Cash closes are the last regular-session NYSE/Nasdaq print.</p>
+    <p>The desk token is not live. The board is a live slice of the Robinhood stock-paired universe. Cash closes are the last regular-session print.</p>
   </div>
 </section>
-<footer>memefi.biz · not financial advice · premium = on-chain wrapper / cash close</footer>
+<footer>memefi.biz · not financial advice · on-chain dump via memefimarketcap · premium = wrapper / cash close</footer>
 <script src="app.js"></script>
 </body>
 </html>
