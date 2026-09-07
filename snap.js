@@ -28,6 +28,17 @@ function pct(n) {
   if (x >= 1) return x.toFixed(2) + '%';
   return x.toFixed(3) + '%';
 }
+function ageOf(iso) {
+  const t = Date.parse(iso || '');
+  const start = Number.isFinite(t) ? t : window.__SNAP_AT;
+  if (!start) return 'live';
+  const m = Math.max(0, Math.round((Date.now() - start) / 60000));
+  if (m < 1) return 'fresh';
+  if (m === 1) return '1m stale';
+  if (m < 60) return m + 'm stale';
+  const h = Math.round(m / 60);
+  return h + (h === 1 ? 'h stale' : 'h stale');
+}
 function chg(n) {
   const x = Number(n);
   if (!Number.isFinite(x)) return { t: '-', c: 'mute' };
@@ -98,7 +109,13 @@ function paintSnapshot(s) {
   if (s.holders != null) bits.push(num(s.holders) + ' holders');
   set('kpi-vol-sub', bits.join(' / ') || '24h');
   const blk = document.getElementById('snap-block');
-  if (blk) blk.textContent = s.headBlock ? 'block ' + num(s.headBlock) : 'on-chain';
+  if (blk) {
+    const head = s.headBlock ? num(s.headBlock) : null;
+    const age = ageOf(s.generated);
+    const label = head ? ('Head ' + head + ' \u00b7 ' + age) : age;
+    blk.innerHTML = '<i class="led" aria-hidden="true"></i><span>' + label + '</span>';
+    blk.setAttribute('data-tip', 'Robinhood Chain height at last refresh. Stale is how old this snapshot is.');
+  }
   paintUtil(s.util);
   const movers = document.getElementById('snap-movers');
   if (movers) {
@@ -122,6 +139,8 @@ async function bootSnap() {
     const r = await fetch('/api/board');
     if (!r.ok) return;
     const d = await r.json();
+    window.__SNAP_AT = Date.now();
+    if (d.snapshot) d.snapshot.generated = d.generated || d.snapshot.generated;
     paintSnapshot(d.snapshot);
   } catch (e) {}
 }
@@ -129,3 +148,12 @@ window.paintSnapshot = paintSnapshot;
 window.imgErr = imgErr;
 bootSnap();
 setInterval(bootSnap, 60000);
+setInterval(function () {
+  const blk = document.getElementById('snap-block');
+  if (!blk || !blk.querySelector('span')) return;
+  const span = blk.querySelector('span');
+  const txt = span.textContent || '';
+  const head = txt.split('\u00b7')[0].trim();
+  if (!head) return;
+  span.textContent = head + ' \u00b7 ' + ageOf();
+}, 30000);
