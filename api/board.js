@@ -142,6 +142,7 @@ function lite(c) {
     address: c.address,
     pair: c.pair,
     price: c.price,
+    marketCap: c.marketCap,
     change24h: c.change24h,
     stockLockedUsd: c.stockLockedUsd,
     stockLockedUnits: c.stockLockedUnits
