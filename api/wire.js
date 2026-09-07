@@ -5,7 +5,17 @@ const FEEDS = [
   { source: "The Block", url: "https://www.theblock.co/rss.xml" },
   { source: "CoinDesk", url: "https://www.coindesk.com/arc/outboundfeeds/rss/" },
   { source: "Cointelegraph", url: "https://cointelegraph.com/rss" },
-  { source: "Yahoo Finance", url: "https://finance.yahoo.com/news/rssindex" }
+  { source: "Blockworks", url: "https://blockworks.co/feed" },
+  { source: "The Defiant", url: "https://thedefiant.io/feed" },
+  { source: "crypto.news", url: "https://crypto.news/feed" },
+  { source: "DL News", url: "https://www.dlnews.com/arc/outboundfeeds/rss/" },
+  { source: "Bankless", url: "https://www.bankless.com/feed" },
+  { source: "BeInCrypto", url: "https://beincrypto.com/feed/" },
+  { source: "Yahoo Finance", url: "https://finance.yahoo.com/news/rssindex" },
+  { source: "MarketWatch", url: "https://www.marketwatch.com/rss/topstories" },
+  { source: "RH tape", url: "https://news.google.com/rss/search?q=Robinhood+Chain+OR+%22tokenized+stocks%22+OR+%22stock+tokens%22+OR+memefi+OR+%22meme+stock%22&hl=en-US&gl=US&ceid=US:en" },
+  { source: "RWA desk", url: "https://news.google.com/rss/search?q=RWA+OR+%22real+world+assets%22+OR+tokenization+crypto+OR+xStocks&hl=en-US&gl=US&ceid=US:en" },
+  { source: "Meme tape", url: "https://news.google.com/rss/search?q=memecoin+OR+%22meme+coin%22+Robinhood+OR+Pons+OR+%22pair.fund%22&hl=en-US&gl=US&ceid=US:en" }
 ];
 
 const FALLBACK = [
@@ -18,7 +28,7 @@ function decode(html) {
   return String(html || "")
     .replace(/<!\[CDATA\[|\]\]>/g, "")
     .replace(/&/g, "&")
-    .replace(/"/g, '"')
+    .replace(/"/g, "\"")
     .replace(/&#39;|'/g, "'")
     .replace(/</g, "<")
     .replace(/>/g, ">");
@@ -36,7 +46,6 @@ function badImage(url) {
   const u = String(url || "").toLowerCase();
   if (!/^https?:/.test(u)) return true;
   if (/news\.google|google\.com\/images|gstatic\.com|googleusercontent\.com\/icon|favicon|logo.*google|\/logo\./.test(u)) return true;
-  if (/\.(svg)(\?|$)/.test(u) && /google|mexc/.test(u)) return true;
   return false;
 }
 function pickImage(chunk) {
@@ -56,14 +65,17 @@ function publisherUrl(chunk, link) {
 }
 function score(title, desc, source) {
   const t = (title + " " + desc + " " + source).toLowerCase();
-  let s = 0;
-  if (/stock[- ]paired|tokenized stock|tokenised stock/.test(t)) s += 8;
+  let s = 1;
+  if (/stock[- ]paired|tokenized stock|tokenised stock|stock token/.test(t)) s += 8;
   if (/robinhood chain|tokenized (equity|share|etf|metal|gold|silver)/.test(t)) s += 6;
   if (/\bmemefi\b|meme\.fi/.test(t)) s += 7;
-  if (/\b(nvda|amc|gld|slv|hood|hims|gme|mstr)\b/.test(t) && /meme|token/.test(t)) s += 5;
-  if (/memecoin|meme coin|tokenized/.test(t)) s += 2;
-  if (/wrapper|premium|depeg|cash close/.test(t)) s += 3;
-  if (/bitcoin etf only|nft drop|airdrop/.test(t) && s < 4) s -= 3;
+  if (/\b(nvda|amc|gld|slv|hood|hims|gme|mstr|tsla|spy)\b/.test(t)) s += 3;
+  if (/rwa|real[- ]world asset|tokeniz/.test(t)) s += 4;
+  if (/memecoin|meme coin|meme stock/.test(t)) s += 3;
+  if (/rumor|rumour|unconfirmed|sources say|reportedly|whisper|leak/.test(t)) s += 3;
+  if (/wrapper|premium|depeg|cash close|weekend/.test(t)) s += 3;
+  if (/bitcoin|ethereum|solana|crypto|defi|etf/.test(t)) s += 1;
+  if (/nft drop|airdrop claim|giveaway|sponsored/.test(t) && s < 5) s -= 4;
   return s;
 }
 function parseFeed(xml, fallbackSource) {
@@ -80,25 +92,26 @@ function parseFeed(xml, fallbackSource) {
     const descRaw = tag(chunk, "description");
     const desc = strip(descRaw).replace(/^https?:\/\/\S+$/, "").slice(0, 180);
     const url = publisherUrl(descRaw + " " + chunk, link);
+    const sourceName = strip(tag(chunk, "source")) || fallbackSource;
     out.push({
-      source: fallbackSource,
+      source: sourceName.replace(/ - Google News$/, "") || fallbackSource,
       title,
       blurb: desc && !desc.startsWith("<") && !/^href=/.test(desc) ? desc : "",
       url,
       image: pickImage(chunk),
       published: strip(tag(chunk, "pubDate")),
-      score: score(title, desc, fallbackSource)
+      score: score(title, desc, sourceName + " " + fallbackSource)
     });
   }
   return out;
 }
 async function pull(feed) {
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 7000);
+  const t = setTimeout(() => ctrl.abort(), 6500);
   try {
     const r = await fetch(feed.url, {
       signal: ctrl.signal,
-      headers: { "User-Agent": "memefi.biz wire/1.2", Accept: "application/rss+xml, application/xml, text/xml" }
+      headers: { "User-Agent": "memefi.biz wire/1.3", Accept: "application/rss+xml, application/xml, text/xml" }
     });
     if (!r.ok) return [];
     return parseFeed(await r.text(), feed.source);
@@ -111,7 +124,7 @@ async function pull(feed) {
 async function ogImage(url) {
   if (!url || /news\.google/.test(url)) return null;
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 2500);
+  const t = setTimeout(() => ctrl.abort(), 2200);
   try {
     const r = await fetch(url, {
       signal: ctrl.signal,
@@ -130,18 +143,18 @@ async function ogImage(url) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("Cache-Control", "s-maxage=180, stale-while-revalidate=600");
+  res.setHeader("Cache-Control", "s-maxage=120, stale-while-revalidate=600");
   const bags = await Promise.all(FEEDS.map(pull));
   const seen = new Set();
   const mixed = bags.flat().filter((row) => {
     const key = (row.title || "").toLowerCase().slice(0, 80);
     if (!key || seen.has(key)) return false;
     seen.add(key);
-    return row.score >= 2;
+    return row.score >= 1;
   });
   mixed.sort((a, b) => b.score - a.score || ((b.image ? 1 : 0) - (a.image ? 1 : 0)));
-  const items = (mixed.length ? mixed : FALLBACK).slice(0, 10);
-  await Promise.all(items.map(async (it) => {
+  const items = (mixed.length ? mixed : FALLBACK).slice(0, 24);
+  await Promise.all(items.slice(0, 12).map(async (it) => {
     if (it.image && !badImage(it.image)) return;
     it.image = await ogImage(it.url);
   }));
