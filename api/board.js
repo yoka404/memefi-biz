@@ -11,8 +11,9 @@ async function yahoo(symbol) {
   return Number.isFinite(Number(px)) ? Number(px) : null;
 }
 
-function slim(c) {
+function slim(c, rank) {
   return {
+    rank: rank || c.rank || null,
     ticker: c.ticker,
     name: c.name,
     launchpad: c.launchpad,
@@ -25,6 +26,7 @@ function slim(c) {
     volume24h: c.volume24h,
     stockLockedUnits: c.stockLockedUnits,
     stockLockedUsd: c.stockLockedUsd,
+    holders: c.holders || c.holdersExclPoolManager || c.holdersTotal || null,
     launchedAt: c.launchedAt
   };
 }
@@ -38,16 +40,13 @@ export default async function handler(req, res) {
     if (!r.ok) throw new Error("dump " + r.status);
     const dump = await r.json();
     const coins = (dump.coins || []).filter((c) => c && c.listingState === "listed");
-    const top = coins
-      .slice()
-      .sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0))
-      .slice(0, 80)
-      .map(slim);
+    const ranked = coins.slice().sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+    const top = ranked.slice(0, 200).map((c, i) => slim(c, i + 1));
     const newest = coins
       .slice()
       .sort((a, b) => String(b.launchedAt || "").localeCompare(String(a.launchedAt || "")))
-      .slice(0, 40)
-      .map(slim);
+      .slice(0, 80)
+      .map((c, i) => slim(c, i + 1));
     const quotes = {};
     await Promise.all(YAHOO.map(async (s) => {
       try {
@@ -60,14 +59,18 @@ export default async function handler(req, res) {
     for (const [sym, row] of Object.entries(stocks)) {
       if (row && Number.isFinite(Number(row.price))) onchain[sym] = Number(row.price);
     }
+    const listing = dump.listing || {};
     res.status(200).json({
       generated: dump.meta && dump.meta.generated,
       headBlock: dump.meta && dump.meta.headBlock,
       aggregates: {
         coins: (dump.aggregates && dump.aggregates.coinsListed) || coins.length,
+        launches: listing.totalLaunchesOnChain,
+        listed: listing.listed,
         equities: (dump.aggregates && dump.aggregates.equitiesPaired) || Object.keys(stocks).length,
         volume24h: dump.aggregates && dump.aggregates.volume24hUsd && dump.aggregates.volume24hUsd.total,
-        stockLockedUsd: dump.aggregates && dump.aggregates.stockLockedUsd && dump.aggregates.stockLockedUsd.total
+        stockLockedUsd: dump.aggregates && dump.aggregates.stockLockedUsd && dump.aggregates.stockLockedUsd.total,
+        byLaunchpad: listing.byLaunchpad || {}
       },
       quotes,
       onchain,
