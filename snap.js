@@ -68,13 +68,17 @@ function row(c, right, sub) {
 }
 function paintUtil(util) {
   const box = document.getElementById('snap-util');
-  if (!box) return;
+  if (box) box.innerHTML = '';
+  const pctEl = document.getElementById('kpi-util');
+  const subEl = document.getElementById('kpi-util-sub');
+  if (!pctEl) return;
   if (!util || util.pct == null) {
-    box.innerHTML = '';
+    pctEl.textContent = '-';
+    if (subEl) subEl.textContent = 'locked / outstanding';
     return;
   }
-  const tip = 'Share of official stock and metal tokens sitting in meme pools versus outstanding wrapper value.';
-  box.innerHTML = '<div class="u total" data-tip="' + esc(tip) + '"><em>In pools</em><b>' + pct(util.pct) + '</b><small>' + money(util.locked) + ' locked / ' + money(util.aum) + ' outstanding</small></div>';
+  pctEl.textContent = pct(util.pct);
+  if (subEl) subEl.textContent = money(util.locked) + ' locked / ' + money(util.aum) + ' outstanding';
 }
 function paintSnapshot(s) {
   if (!s) return;
