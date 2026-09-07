@@ -28,19 +28,6 @@ function pct(n) {
   if (x >= 1) return x.toFixed(2) + '%';
   return x.toFixed(3) + '%';
 }
-function lastUpdate(iso) {
-  const t = Date.parse(iso || '');
-  const start = Number.isFinite(t) ? t : window.__SNAP_AT;
-  if (!start) return 'updating';
-  const d = new Date(start);
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  const mins = Math.max(0, Math.round((Date.now() - start) / 60000));
-  if (mins < 1) return 'updated ' + hh + ':' + mm;
-  if (mins === 1) return 'updated ' + hh + ':' + mm + ' \u00b7 1m ago';
-  if (mins < 60) return 'updated ' + hh + ':' + mm + ' \u00b7 ' + mins + 'm ago';
-  return 'updated ' + hh + ':' + mm;
-}
 function chg(n) {
   const x = Number(n);
   if (!Number.isFinite(x)) return { t: '-', c: 'mute' };
@@ -112,10 +99,9 @@ function paintSnapshot(s) {
   set('kpi-vol-sub', bits.join(' / ') || '24h');
   const blk = document.getElementById('snap-block');
   if (blk) {
-    const head = s.headBlock ? ('Block ' + num(s.headBlock)) : 'Block';
-    const label = head + ' \u00b7 ' + lastUpdate(s.generated);
+    const label = s.headBlock ? ('Block ' + num(s.headBlock)) : 'Block';
     blk.innerHTML = '<i class="led" aria-hidden="true"></i><span>' + label + '</span>';
-    blk.setAttribute('data-tip', 'Robinhood Chain height and clock time of the last snapshot refresh.');
+    blk.setAttribute('data-tip', 'Robinhood Chain height at last refresh.');
   }
   paintUtil(s.util);
   const movers = document.getElementById('snap-movers');
@@ -140,8 +126,6 @@ async function bootSnap() {
     const r = await fetch('/api/board');
     if (!r.ok) return;
     const d = await r.json();
-    window.__SNAP_AT = Date.now();
-    if (d.snapshot) d.snapshot.generated = d.generated || d.snapshot.generated;
     paintSnapshot(d.snapshot);
   } catch (e) {}
 }
