@@ -14,6 +14,12 @@ async function yahoo(symbol) {
   return Number.isFinite(Number(px)) ? Number(px) : null;
 }
 
+function pickHolders(c) {
+  const n = c.holdersExclPoolManager ?? c.holders ?? c.holdersTotal ?? (c.reported && (c.reported.holdersExclPoolManager || c.reported.holders));
+  const x = Number(n);
+  return Number.isFinite(x) ? x : null;
+}
+
 function slimDump(c, extra) {
   const rep = c.reported || {};
   return Object.assign({
@@ -29,13 +35,30 @@ function slimDump(c, extra) {
     volume24h: c.volume24h,
     stockLockedUnits: c.stockLockedUnits != null ? c.stockLockedUnits : rep.stockLockedUnits,
     stockLockedUsd: c.stockLockedUsd != null ? c.stockLockedUsd : rep.stockLockedUsd,
-    holders: c.holders || c.holdersExclPoolManager || c.holdersTotal || null,
+    holders: pickHolders(c),
     launchedAt: c.launchedAt,
     logo: c.logo || null,
     imageUri: c.imageUri || null,
     flagged: false,
     flag: null
   }, extra || {});
+}
+
+function mergeRow(base, live) {
+  if (!live) return base;
+  return Object.assign({}, base, live, {
+    holders: live.holders != null ? live.holders : base.holders,
+    stockLockedUnits: live.stockLockedUnits != null ? live.stockLockedUnits : base.stockLockedUnits,
+    stockLockedUsd: live.stockLockedUsd != null ? live.stockLockedUsd : base.stockLockedUsd,
+    logo: base.logo || live.logo,
+    imageUri: base.imageUri || live.imageUri,
+    marketCap: live.marketCap != null ? live.marketCap : base.marketCap,
+    price: live.price != null ? live.price : base.price,
+    volume24h: live.volume24h != null ? live.volume24h : base.volume24h,
+    change24h: live.change24h != null ? live.change24h : base.change24h,
+    pair: live.pair || base.pair,
+    poolId: live.poolId || base.poolId
+  });
 }
 
 export default async function handler(req, res) {
@@ -48,33 +71,31 @@ export default async function handler(req, res) {
       const r = await fetch("https://memefimarketcap.com/data.json", { headers: { "User-Agent": "memefi.biz desk" } });
       if (r.ok) dump = await r.json();
     } catch (e) {}
-    const overlay = {};
+    const map = {};
     if (dump && dump.coins) {
       for (const c of dump.coins) {
-        if (c && c.address) overlay[String(c.address).toLowerCase()] = slimDump(c);
+        if (!c || !c.address) continue;
+        if (c.listingState && c.listingState !== "listed") continue;
+        map[String(c.address).toLowerCase()] = slimDump(c);
       }
     }
-    let coins = (uni && uni.coins) ? uni.coins.slice() : [];
-    if (!coins.length && dump) {
-      coins = (dump.coins || []).filter((c) => c && c.listingState === "listed").map((c) => slimDump(c));
+    if (dump && dump.anomalies) {
+      for (const c of dump.anomalies) {
+        if (!c || !c.address) continue;
+        const addr = String(c.address).toLowerCase();
+        map[addr] = slimDump(c, { flagged: true, flag: c.gate || c.why || "anomalous" });
+      }
     }
-    coins = coins.map((c, i) => {
-      const extra = overlay[String(c.address || "").toLowerCase()] || {};
-      return Object.assign({}, extra, c, {
-        rank: i + 1,
-        holders: c.holders != null ? c.holders : extra.holders,
-        stockLockedUnits: c.stockLockedUnits != null ? c.stockLockedUnits : extra.stockLockedUnits,
-        stockLockedUsd: c.stockLockedUsd != null ? c.stockLockedUsd : extra.stockLockedUsd,
-        logo: extra.logo || c.logo,
-        imageUri: extra.imageUri || c.imageUri
-      });
-    });
-    const seen = new Set(coins.map((c) => String(c.address || "").toLowerCase()));
-    if (overlay[PIN] && !seen.has(PIN)) coins.unshift(Object.assign({ flagged: true, flag: "pinned" }, overlay[PIN], { address: PIN, pair: overlay[PIN].pair || "AMC", ticker: "MEME" }));
-    if (overlay[PIN_GG] && !seen.has(PIN_GG)) coins.push(Object.assign({}, overlay[PIN_GG], { address: PIN_GG, pair: "GLD", ticker: overlay[PIN_GG].ticker || "GG" }));
-    coins.sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+    for (const c of (uni && uni.coins) || []) {
+      const addr = String(c.address || "").toLowerCase();
+      if (!addr) continue;
+      map[addr] = mergeRow(map[addr] || {}, c);
+    }
+    if (!map[PIN]) map[PIN] = { ticker: "MEME", name: "A Meme Coin", address: PIN, pair: "AMC", launchpad: "long", flagged: true, flag: "pinned" };
+    if (!map[PIN_GG]) map[PIN_GG] = { ticker: "GG", name: "Golden Goose", address: PIN_GG, pair: "GLD", launchpad: "uniswap" };
+    const coins = Object.values(map).sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
     coins.forEach((c, i) => { c.rank = i + 1; });
-    const metals = coins.filter((c) => c.pair === "GLD" || c.pair === "SLV");
+    const metals = coins.filter((c) => c.pair === "GLD" || c.pair === "SLV").sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
     const newest = coins.slice().sort((a, b) => String(b.createdAt || b.launchedAt || "").localeCompare(String(a.createdAt || a.launchedAt || ""))).slice(0, 80);
     const quotes = {};
     await Promise.all(YAHOO.map(async (s) => {
@@ -91,7 +112,7 @@ export default async function handler(req, res) {
     }
     res.status(200).json({
       generated: (uni && uni.generated) || (dump && dump.meta && dump.meta.generated),
-      source: uni && uni.coins && uni.coins.length ? "memefi-indexer" : "dump-fallback",
+      source: uni && uni.coins && uni.coins.length ? "memefi-indexer+registry" : "registry",
       wrappers: uni && uni.wrappers,
       aggregates: {
         coins: coins.length,
@@ -102,7 +123,7 @@ export default async function handler(req, res) {
       },
       quotes,
       onchain,
-      top: coins.slice(0, 200),
+      top: coins.slice(0, 250),
       newest,
       metals,
       flagged: coins.filter((c) => c.flagged)
