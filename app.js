@@ -50,15 +50,6 @@ function fmtPrem(n) {
   else if (x <= -2) cls = "dn";
   return { text: sign + x.toFixed(1) + "%", cls };
 }
-function padLabel(raw) {
-  const s = String(raw || "").toLowerCase();
-  if (s.includes("pons")) return "Pons";
-  if (s.includes("long")) return "long.xyz";
-  if (s.includes("bankr")) return "Bankr";
-  if (s.includes("feel")) return "feel.cash";
-  if (s.includes("flap")) return "Flap";
-  return raw || "other";
-}
 function padGroup(raw) {
   const s = String(raw || "").toLowerCase();
   if (s.includes("pons")) return "pons";
@@ -67,6 +58,22 @@ function padGroup(raw) {
   if (s.includes("feel")) return "feel";
   if (s.includes("flap")) return "flap";
   return "other";
+}
+function padLabel(raw) {
+  const g = padGroup(raw);
+  return { pons: "Pons", long: "long.xyz", bankr: "Bankr", feel: "feel.cash", flap: "Flap" }[g] || raw || "other";
+}
+function padUrl(raw, address, ticker) {
+  const a = String(address || "").toLowerCase();
+  const t = encodeURIComponent(String(ticker || "").toLowerCase());
+  const g = padGroup(raw);
+  if (!/^0x[a-f0-9]{40}$/.test(a)) return null;
+  if (g === "long") return "https://app.long.xyz/tokens/" + a;
+  if (g === "bankr") return "https://bankr.bot/terminal/trade?out=" + a + "&chain=robinhood";
+  if (g === "feel") return t ? "https://feel.cash/" + t : "https://feel.cash";
+  if (g === "flap") return "https://flap.sh/robinhood/" + a;
+  if (g === "pons") return "https://www.ponsfamily.com/launchpad/" + a;
+  return "https://rh-scan.com/token/" + a;
 }
 function cashSession(d) {
   const fmt = new Intl.DateTimeFormat("en-US", {
@@ -153,7 +160,9 @@ function renderRows(list) {
     const href = c.address ? "/p/" + c.address : "";
     const imgs = pfp(c);
     const sl = stockImgs(c.pair, logos);
-    const flag = c.flagged ? `<small class="flag" data-tip="Excluded from the reference rank. Pool math looks impossible.">flagged</small>` : `<small>${padLabel(c.launchpad)}</small>`;
+    const pu = padUrl(c.launchpad, c.address, c.ticker);
+    const padHtml = pu ? `<a class="padlink" href="${pu}" target="_blank" rel="noopener">${padLabel(c.launchpad)}</a>` : `<small>${padLabel(c.launchpad)}</small>`;
+    const flag = c.flagged ? `<small class="flag" data-tip="Excluded from the reference rank. Pool math looks impossible.">flagged</small>` : padHtml;
     return `<tr data-href="${href}" data-pool="${c.poolId || ""}">
       <td class="num">${i + 1}</td>
       <td>
@@ -286,6 +295,7 @@ async function loadWire() {
 
 document.addEventListener("click", (e) => {
   const t = e.target;
+  if (t && t.closest && t.closest("a.padlink")) return;
   if (t && t.dataset && t.dataset.tab) {
     TAB = t.dataset.tab;
     document.querySelectorAll("[data-tab]").forEach((b) => b.classList.toggle("on", b.dataset.tab === TAB));
