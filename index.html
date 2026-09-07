@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>MEMEFI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+<header class="nav">
+  <div class="brand"><img src="pepe.png" alt=""/>MEMEFI</div>
+  <nav><a class="on">Desk</a><a>Prices</a><a>Wire</a><a>Token</a></nav>
+  <div class="meta">Paper · HOOD <span>+2.1%</span></div>
+</header>
+
+<section class="hero">
+  <div class="hero-text">
+    <p class="eyebrow">News aggregator + prices</p>
+    <h1>The tape after<br>the punchline.</h1>
+    <p class="lede">Memes pareados con stocks. Un cable de noticias. Un board de precios. El personaje sigue de traje; el mercado no cierra.</p>
+    <div class="pills">
+      <div><em>MEMEFI</em><b id="px">0.00412</b><s class="up">+18.4%</s></div>
+      <div><em>HOOD</em><b>118.40</b><s class="up">+2.1%</s></div>
+      <div><em>Ratio</em><b>0.0000348</b><s class="dn">−1.3%</s></div>
+    </div>
+  </div>
+  <figure>
+    <img src="pepe.png" alt="Pepe"/>
+    <figcaption>Principal</figcaption>
+  </figure>
+</section>
+
+<section class="layout">
+  <article class="card wide">
+    <div class="card-head"><h2>Prices</h2><span>Stock-paired · mock</span></div>
+    <table>
+      <thead><tr><th>Meme</th><th>Stock</th><th>Last</th><th>24h</th><th>Underlying</th><th>Volume</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </article>
+  <article class="card">
+    <div class="card-head"><h2>Wire</h2><span>Aggregator</span></div>
+    <ul id="wire"></ul>
+  </article>
+</section>
+
+<section class="feature">
+  <img src="pepe.png" alt=""/>
+  <div>
+    <p class="eyebrow">Native pair</p>
+    <h2>$MEMEFI / HOOD</h2>
+    <p>El token del desk. Todavía no existe onchain. Esta página es maqueta: noticias y precios de papel.</p>
+  </div>
+</section>
+<footer>memefi.biz · nfa · paper mock</footer>
+<script src="app.js"></script>
+</body>
+</html>
