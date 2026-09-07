@@ -100,6 +100,16 @@ function goLive(el) {
   el.classList.remove("waiting");
   el.classList.add("on-air");
 }
+function mcapOf(c) {
+  const n = Number(c && c.marketCap);
+  return Number.isFinite(n) ? n : 0;
+}
+function stockImgs(pair, logos) {
+  const pack = logos && logos[pair];
+  if (!pack) return [];
+  if (typeof pack === "string") return [pack];
+  return [pack.stock, pack.rh].filter(Boolean);
+}
 
 let TAB = "top";
 let PAD = "all";
@@ -112,7 +122,8 @@ function rowCoin(c) {
   if (!live) return c;
   const out = Object.assign({}, c);
   if (live.priceUsd) out.price = Number(live.priceUsd);
-  if (live.marketCap || live.fdv) out.marketCap = Number(live.marketCap || live.fdv);
+  const liveM = Number(live.marketCap || live.fdv);
+  if (Number.isFinite(liveM) && liveM > 0) out.marketCap = liveM;
   if (live.volume && live.volume.h24 != null) out.volume24h = Number(live.volume.h24);
   if (live.priceChange && live.priceChange.h24 != null) out.change24h = Number(live.priceChange.h24);
   if (live.info && live.info.imageUrl) out.dexImage = live.info.imageUrl;
@@ -131,7 +142,7 @@ function renderRows(list) {
     if (PAD !== "all" && PAD !== "metals" && padGroup(c.launchpad) !== PAD) return false;
     return matchesQuery(c, raw);
   }).map(rowCoin);
-  if (TAB !== "new") filtered.sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
+  filtered.sort((a, b) => mcapOf(b) - mcapOf(a));
   const rows = document.getElementById("rows");
   const looksAddr = /^0x[a-fA-F0-9]{40}$/.test(raw);
   rows.innerHTML = filtered.map((c, i) => {
@@ -141,7 +152,7 @@ function renderRows(list) {
     const pr = fmtPrem(premium(wrap, cash));
     const href = c.address ? "/p/" + c.address : "";
     const imgs = pfp(c);
-    const sl = logos[c.pair];
+    const sl = stockImgs(c.pair, logos);
     const flag = c.flagged ? `<small class="flag" data-tip="Excluded from the reference rank. Pool math looks impossible.">flagged</small>` : `<small>${padLabel(c.launchpad)}</small>`;
     return `<tr data-href="${href}" data-pool="${c.poolId || ""}">
       <td class="num">${i + 1}</td>
@@ -151,7 +162,7 @@ function renderRows(list) {
           <span class="nm"><strong>${c.name || c.ticker} <span>${c.ticker}</span></strong>${flag}</span>
         </a>
       </td>
-      <td><div class="stock">${sl ? `<img class="stock-logo" src="${sl}" alt="" width="18" height="18" loading="lazy"/>` : ""}<span><b>${c.pair || "—"}</b><em>${wrap != null ? fmtPx(wrap) : "—"}</em></span></div></td>
+      <td><div class="stock">${sl.length ? `<img class="stock-logo" src="${sl[0]}" data-alts="${sl.slice(1).join("|")}" alt="" width="18" height="18" loading="lazy" onerror="(function(el){var a=(el.getAttribute('data-alts')||'').split('|').filter(Boolean);if(!a.length){el.onerror=null;el.removeAttribute('src');return;}el.src=a.shift();el.setAttribute('data-alts',a.join('|'));})(this)"/>` : ""}<span><b>${c.pair || "—"}</b><em>${wrap != null ? fmtPx(wrap) : "—"}</em></span></div></td>
       <td class="px">${fmtPx(c.price)}</td>
       <td class="${chg.cls}">${chg.text}</td>
       <td class="mcap">${fmtUsd(c.marketCap)}</td>
@@ -165,8 +176,9 @@ function renderRows(list) {
 
 function visibleList() {
   if (!CACHE) return [];
-  if (PAD === "metals") return CACHE.metals || [];
-  return TAB === "new" ? (CACHE.newest || []) : (CACHE.top || []);
+  if (PAD === "metals") return (CACHE.metals || []).slice();
+  if (TAB === "new") return (CACHE.newest || []).slice();
+  return (CACHE.top || []).slice();
 }
 
 function paint() {
