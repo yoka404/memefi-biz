@@ -1,7 +1,7 @@
 # memefi.biz
 
-News aggregator + prices for stock-paired memes on Robinhood Chain.
+News aggregator and price board for memecoins paired with tokenized equities.
 
-Paper mock. Open `index.html`.
+English. Formal desk copy. Paper mock until live feeds are connected.
 
-Next: Vercel + domain memefi.biz + premium indicator (NYSE close vs on-chain).
+Open `index.html`. Next: Vercel, domain memefi.biz, premium indicator (cash close versus on-chain).
