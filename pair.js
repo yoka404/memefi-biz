@@ -5,6 +5,7 @@ const ICONS = {
   discord: '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M19.3 5.2A18 18 0 0 0 14.9 4l-.2.4a16 16 0 0 1 3.1 1.2 16 16 0 0 0-13.6 0A16 16 0 0 1 9.3 4L9.1 4a18 18 0 0 0-4.4 1.2C1.9 9.1 1.2 12.8 1.4 16.5a18 18 0 0 0 5.4 2.7l.7-1.1a12 12 0 0 1-1.9-.9l.5-.4a13 13 0 0 0 11.8 0l.5.4a12 12 0 0 1-1.9.9l.7 1.1a18 18 0 0 0 5.4-2.7c.3-4.2-.5-7.8-2.3-11.3zM8.7 14.4c-.8 0-1.5-.8-1.5-1.7s.7-1.7 1.5-1.7 1.5.8 1.5 1.7-.7 1.7-1.5 1.7zm6.6 0c-.8 0-1.5-.8-1.5-1.7s.7-1.7 1.5-1.7 1.5.8 1.5 1.7-.7 1.7-1.5 1.7z"/></svg>',
   dex: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h10M4 17h7"/></svg>'
 };
+const SCAN = "https://rh-scan.com";
 
 function addrFromPath() {
   const parts = location.pathname.split("/").filter(Boolean);
@@ -111,7 +112,7 @@ async function main() {
     `<span class="chip">$${c.ticker || ""}</span>` +
     (c.pair ? `<span class="chip">quoted in ${c.pair}</span>` : "") +
     `<span class="chip">${padPretty(c.launchpad)}</span>` +
-    `<span class="chip">${shortAddr(c.address)}</span>`;
+    `<a class="chip" href="${SCAN}/token/${c.address}" target="_blank" rel="noopener">${shortAddr(c.address)}</a>`;
   document.getElementById("sub").textContent = equity
     ? "$" + c.ticker + " is quoted against tokenized " + c.pair + "."
     : "$" + c.ticker + " pool is quoted in " + (c.pair || "the paired asset") + ".";
@@ -142,7 +143,7 @@ async function main() {
   });
   if (c.dexUrl) links.push(`<a href="${c.dexUrl}" target="_blank" rel="noopener">${ICONS.dex}DexScreener</a>`);
   links.push(`<a href="https://www.geckoterminal.com/robinhood/tokens/${c.address}" target="_blank" rel="noopener">${ICONS.website}GeckoTerminal</a>`);
-  links.push(`<a href="https://robinhoodchain.blockscout.com/token/${c.address}" target="_blank" rel="noopener">${ICONS.dex}Explorer</a>`);
+  links.push(`<a href="${SCAN}/token/${c.address}" target="_blank" rel="noopener">${ICONS.dex}RH-scan</a>`);
   document.getElementById("socials").innerHTML = links.join("");
   const chg = Number(c.change24h);
   const chgHtml = Number.isFinite(chg) ? `<s class="${chg >= 0 ? "up" : "dn"}">${fmtChg(chg)}</s>` : "";
@@ -173,13 +174,13 @@ async function main() {
     ["Buys / sells 24h", (c.buys24h != null || c.sells24h != null) ? (c.buys24h || 0) + " / " + (c.sells24h || 0) : "—"],
     ["1h / 6h / 24h", [c.change1h, c.change6h, c.change24h].map(fmtChg).join(" · ")],
     ["Created", c.createdAt ? new Date(c.createdAt).toUTCString() : "—"],
-    ["Token", `<a href="https://robinhoodchain.blockscout.com/token/${c.address}" target="_blank" rel="noopener">${c.address}</a>`],
+    ["Token", `<a href="${SCAN}/token/${c.address}" target="_blank" rel="noopener">${c.address}</a>`],
     ["Pool", c.poolId ? `<a href="https://dexscreener.com/robinhood/${c.poolId}" target="_blank" rel="noopener">${c.poolId}</a>` : "—"]
   ];
   if (equity) {
     rows.splice(2, 0, ["Paired stock", c.pair + (s && s.name ? " — " + s.name : "")]);
     rows.push(["Asset locked", (c.stockLockedUnits != null ? Number(c.stockLockedUnits).toFixed(2) + " " + c.pair : "—") + " · " + fmtUsd(c.stockLockedUsd)]);
-    rows.push(["Stock token", s && s.address ? `<a href="https://robinhoodchain.blockscout.com/token/${s.address}" target="_blank" rel="noopener">${s.address}</a>` : "—"]);
+    rows.push(["Stock token", s && s.address ? `<a href="${SCAN}/token/${s.address}" target="_blank" rel="noopener">${s.address}</a>` : "—"]);
   }
   document.getElementById("file").innerHTML = rows.map((row) => `<tr><th>${row[0]}</th><td>${row[1]}</td></tr>`).join("");
 }
