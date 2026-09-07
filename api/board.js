@@ -1,6 +1,7 @@
 export const config = { maxDuration: 30 };
 import { buildUniverse } from "../lib/indexer.js";
 import { fillHolders } from "../lib/blockscout.js";
+import { fillPads } from "../lib/airlock.js";
 import { padGroup } from "../lib/pads.js";
 
 const YAHOO = ["AMC","NVDA","HIMS","MU","MSTR","TSLA","HOOD","AAPL","GME","SPY","MSFT","AMD","AMZN","META","GOOGL","NFLX","PLTR","INTC","BABA","COIN","RBLX","DJT","GLD","SLV","QQQ","IWM"];
@@ -164,6 +165,7 @@ export default async function handler(req, res) {
     const raw = Object.values(map).filter((c) => !looksScam(c));
     const trusted = raw.filter(isTrusted).sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
     await fillHolders(trusted.slice(0, 40), 8);
+    await fillPads(trusted.slice(0, 24), 16);
     trusted.forEach((c, i) => { c.rank = i + 1; });
     const metals = trusted.filter((c) => c.pair === "GLD" || c.pair === "SLV");
     const newest = trusted.slice().sort((a, b) => String(b.createdAt || b.launchedAt || "").localeCompare(String(a.createdAt || a.launchedAt || ""))).slice(0, 80);
@@ -182,7 +184,7 @@ export default async function handler(req, res) {
     }
     res.status(200).json({
       generated: (uni && uni.generated) || (dump && dump.meta && dump.meta.generated),
-      source: uni && uni.coins && uni.coins.length ? "memefi-indexer+registry" : "registry",
+      source: uni && uni.coins && uni.coins.length ? "memefi-indexer+airlock" : "registry",
       wrappers: uni && uni.wrappers,
       aggregates: {
         coins: trusted.length,
