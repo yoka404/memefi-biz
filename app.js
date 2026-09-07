@@ -79,8 +79,10 @@ function renderRows(list) {
     const wrap = onchain[c.pair];
     const cash = quotes[c.pair];
     const pr = fmtPrem(premium(wrap, cash));
-    return `<tr>
-      <td>$${c.ticker}</td>
+    const href = c.address ? "/p/" + c.address : null;
+    const name = href ? `<a class="pair" href="${href}">$${c.ticker}</a>` : `$${c.ticker}`;
+    return `<tr data-href="${href || ""}">
+      <td>${name}</td>
       <td>${c.pair || "—"}</td>
       <td>${fmtPx(c.price)}</td>
       <td class="${chg.cls}">${chg.text}</td>
@@ -153,7 +155,10 @@ document.addEventListener("click", (e) => {
     TAB = t.dataset.tab;
     document.querySelectorAll("[data-tab]").forEach((b) => b.classList.toggle("on", b.dataset.tab === TAB));
     paint();
+    return;
   }
+  const tr = t && t.closest && t.closest("tr[data-href]");
+  if (tr && tr.dataset.href && t.tagName !== "A") location.href = tr.dataset.href;
 });
 document.addEventListener("input", (e) => {
   if (e.target && e.target.id === "q") paint();
