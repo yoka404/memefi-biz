@@ -72,6 +72,31 @@ function setAvatar(img, urls) {
   };
   next();
 }
+function xlHeader(url) {
+  if (!url) return null;
+  if (url.indexOf("cdn.dexscreener.com/cms") === -1) return url;
+  return url.replace(/width=\d+/, "width=1500").replace(/height=\d+/, "height=500");
+}
+function setBanner(url, address) {
+  const b = document.getElementById("banner");
+  if (!b) return;
+  const queue = [];
+  const xl = xlHeader(url);
+  if (xl) queue.push(xl);
+  if (url && url !== xl) queue.push(url);
+  if (address) {
+    queue.push("https://dd.dexscreener.com/ds-data/tokens/robinhood/" + address + "/header.png?size=xl");
+    queue.push("https://dd.dexscreener.com/ds-data/tokens/robinhood/" + address + "/header.png");
+  }
+  const next = () => {
+    const u = queue.shift();
+    if (!u) { b.hidden = true; b.removeAttribute("src"); return; }
+    b.hidden = false;
+    b.onerror = next;
+    b.src = u;
+  };
+  next();
+}
 function loadChart(poolId, address) {
   const box = document.getElementById("chart");
   if (!box) return;
@@ -127,11 +152,7 @@ async function main() {
     c.logo,
     c.imageUri
   ]);
-  if (c.banner) {
-    const b = document.getElementById("banner");
-    b.hidden = false;
-    b.src = c.banner;
-  }
+  setBanner(c.banner, c.address);
   if (data.flagged) {
     const f = document.getElementById("flag");
     f.hidden = false;
