@@ -1,6 +1,7 @@
 export const config = { maxDuration: 30 };
 
 const YAHOO = ["AMC","NVDA","HIMS","MU","MSTR","TSLA","HOOD","AAPL","GME","SPY","MSFT","AMD","AMZN","META","GOOGL","NFLX","PLTR","INTC","BABA","COIN","RBLX","DJT","GLD","QQQ","IWM"];
+const PIN = "0x385f4f8ae47651ce5f58f5265395a669f8281e18".toLowerCase();
 
 async function yahoo(symbol) {
   const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(symbol) + "?interval=1d&range=5d";
@@ -11,8 +12,9 @@ async function yahoo(symbol) {
   return Number.isFinite(Number(px)) ? Number(px) : null;
 }
 
-function slim(c, rank) {
-  return {
+function slim(c, rank, extra) {
+  const rep = c.reported || {};
+  return Object.assign({
     rank: rank || c.rank || null,
     ticker: c.ticker,
     name: c.name,
@@ -20,19 +22,21 @@ function slim(c, rank) {
     address: c.address,
     poolId: c.poolId,
     pair: c.pair,
-    price: c.price,
+    price: c.price != null ? c.price : rep.price,
     change24h: c.change24h,
-    marketCap: c.marketCap,
+    marketCap: c.marketCap != null ? c.marketCap : rep.marketCap,
     volume24h: c.volume24h,
-    stockLockedUnits: c.stockLockedUnits,
-    stockLockedUsd: c.stockLockedUsd,
+    stockLockedUnits: c.stockLockedUnits != null ? c.stockLockedUnits : rep.stockLockedUnits,
+    stockLockedUsd: c.stockLockedUsd != null ? c.stockLockedUsd : rep.stockLockedUsd,
     holders: c.holders || c.holdersExclPoolManager || c.holdersTotal || null,
-    launchedAt: c.launchedAt
-  };
+    launchedAt: c.launchedAt,
+    flagged: false,
+    flag: null
+  }, extra || {});
 }
 
 export default async function handler(req, res) {
-  res.setHeader("Cache-Control", "s-maxage=90, stale-while-revalidate=300");
+  res.setHeader("Cache-Control", "s-maxage=20, stale-while-revalidate=60");
   try {
     const r = await fetch("https://memefimarketcap.com/data.json", {
       headers: { "User-Agent": "memefi.biz desk" }
@@ -41,12 +45,25 @@ export default async function handler(req, res) {
     const dump = await r.json();
     const coins = (dump.coins || []).filter((c) => c && c.listingState === "listed");
     const ranked = coins.slice().sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
-    const top = ranked.slice(0, 200).map((c, i) => slim(c, i + 1));
+    let top = ranked.slice(0, 200).map((c, i) => slim(c, i + 1));
     const newest = coins
       .slice()
       .sort((a, b) => String(b.launchedAt || "").localeCompare(String(a.launchedAt || "")))
       .slice(0, 80)
       .map((c, i) => slim(c, i + 1));
+    const anomalies = dump.anomalies || [];
+    const flagged = anomalies.map((c) => slim(c, null, { flagged: true, flag: c.gate || c.why || "anomalous" }));
+    const pin = flagged.find((c) => String(c.address || "").toLowerCase() === PIN) ||
+      slim({
+        ticker: "MEME",
+        name: "A Meme Coin",
+        launchpad: "long",
+        address: PIN,
+        poolId: "0x27ccf0a6d1ee74840220715bcca7d3b01e0d33aa30d0259b47ae1585b3f4c071",
+        pair: "AMC"
+      }, null, { flagged: true, flag: "excluded-from-reference-rank" });
+    const havePin = top.some((c) => String(c.address || "").toLowerCase() === PIN);
+    if (!havePin) top = [pin].concat(top);
     const quotes = {};
     await Promise.all(YAHOO.map(async (s) => {
       try {
@@ -75,7 +92,8 @@ export default async function handler(req, res) {
       quotes,
       onchain,
       top,
-      newest
+      newest,
+      flagged
     });
   } catch (e) {
     res.status(502).json({ error: String(e.message || e) });

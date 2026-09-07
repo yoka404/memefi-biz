@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  res.setHeader("Cache-Control", "s-maxage=30, stale-while-revalidate=60");
+  res.setHeader("Cache-Control", "s-maxage=1, stale-while-revalidate=5");
   const ids = String(req.query.ids || "");
   if (!ids) {
     res.status(400).json({ error: "missing ids" });
