@@ -49,6 +49,15 @@ function socialKind(type, url) {
 function labelKind(k) {
   return { x: "X", telegram: "Telegram", discord: "Discord", website: "Website", dex: "Dex" }[k] || k;
 }
+function padPretty(raw) {
+  const s = String(raw || "").toLowerCase();
+  if (s.includes("pons")) return "Pons";
+  if (s.includes("long")) return "long.xyz";
+  if (s.includes("bankr")) return "Bankr";
+  if (s.includes("feel")) return "feel.cash";
+  if (s.includes("flap")) return "Flap";
+  return raw || "dex";
+}
 function setAvatar(img, urls) {
   const queue = urls.filter(Boolean);
   const sk = document.getElementById("avatar-skel");
@@ -70,6 +79,11 @@ function loadChart(poolId, address) {
   const src = "https://dexscreener.com/robinhood/" + id + "?embed=1&loadChartSettings=0&trades=0&info=0&chartLeftToolbar=0&chartTheme=dark&theme=dark";
   box.innerHTML = `<iframe title="DexScreener chart" src="${src}" allow="clipboard-write" loading="lazy"></iframe>`;
 }
+function shortAddr(a) {
+  const s = String(a || "");
+  if (s.length < 12) return s;
+  return s.slice(0, 6) + "…" + s.slice(-4);
+}
 
 async function main() {
   const address = addrFromPath();
@@ -90,17 +104,21 @@ async function main() {
   const equity = data.isEquity;
   const wrap = equity && s && s.onchain;
   const p = equity ? prem(wrap, cash) : null;
-  document.title = (c.name || c.ticker) + " price · MEMEFI";
-  document.getElementById("pad").textContent = (c.chain || "robinhood") + " · " + (c.launchpad || "dex");
+  document.title = (c.name || c.ticker) + " · MEMEFI";
+  document.getElementById("pad").textContent = "robinhood · " + padPretty(c.launchpad);
   title.textContent = c.name || c.ticker;
   document.getElementById("chips").innerHTML =
-    `<span class="chip">$${c.ticker}</span>` +
-    (c.pair ? `<span class="chip">quoted in ${c.pair}</span>` : "");
+    `<span class="chip">$${c.ticker || ""}</span>` +
+    (c.pair ? `<span class="chip">quoted in ${c.pair}</span>` : "") +
+    `<span class="chip">${padPretty(c.launchpad)}</span>` +
+    `<span class="chip">${shortAddr(c.address)}</span>`;
   document.getElementById("sub").textContent = equity
     ? "$" + c.ticker + " is quoted against tokenized " + c.pair + "."
     : "$" + c.ticker + " pool is quoted in " + (c.pair || "the paired asset") + ".";
   const stamp = document.getElementById("live-stamp");
-  if (stamp) { stamp.classList.remove("waiting"); stamp.textContent = "Live pair"; }
+  const liveText = document.getElementById("live-text");
+  if (liveText) liveText.textContent = "Live pair";
+  if (stamp) { stamp.classList.remove("waiting"); stamp.classList.add("on-air"); }
   setAvatar(document.getElementById("avatar"), [
     c.dexImage,
     "https://dd.dexscreener.com/ds-data/tokens/robinhood/" + c.address + ".png",
@@ -124,7 +142,7 @@ async function main() {
   });
   if (c.dexUrl) links.push(`<a href="${c.dexUrl}" target="_blank" rel="noopener">${ICONS.dex}DexScreener</a>`);
   links.push(`<a href="https://www.geckoterminal.com/robinhood/tokens/${c.address}" target="_blank" rel="noopener">${ICONS.website}GeckoTerminal</a>`);
-  links.push(`<a href="https://robinscan.io/token/${c.address}" target="_blank" rel="noopener">${ICONS.dex}Explorer</a>`);
+  links.push(`<a href="https://robinhoodchain.blockscout.com/token/${c.address}" target="_blank" rel="noopener">${ICONS.dex}Explorer</a>`);
   document.getElementById("socials").innerHTML = links.join("");
   const chg = Number(c.change24h);
   const chgHtml = Number.isFinite(chg) ? `<s class="${chg >= 0 ? "up" : "dn"}">${fmtChg(chg)}</s>` : "";
@@ -138,29 +156,30 @@ async function main() {
     pills += `
     <div data-tip="Last on-chain print of the official wrapper."><em>${c.pair} on-chain</em><b>${wrap != null ? fmtPx(wrap) : "—"}</b></div>
     <div data-tip="Last regular-session print on NYSE. Frozen on weekends and holidays."><em>Cash close</em><b>${cash != null ? fmtPx(cash) : "—"}</b></div>
-    <div data-tip="Wrapper / cash close − 1. Empty if the quote is not an official stock or metal."><em>Premium</em><b>${p == null ? "n/a" : ((p > 0 ? "+" : "") + p.toFixed(1) + "%")}</b></div>`;
+    <div data-tip="Wrapper / cash close − 1."><em>Premium</em><b>${p == null ? "n/a" : ((p > 0 ? "+" : "") + p.toFixed(1) + "%")}</b></div>`;
   } else {
     pills += `<div><em>1h</em><b class="${Number(c.change1h) >= 0 ? "up" : "dn"}">${fmtChg(c.change1h)}</b></div>`;
   }
   document.getElementById("pills").innerHTML = pills;
   loadChart(c.poolId, c.address);
   const rows = [
+    ["Launchpad", padPretty(c.launchpad)],
     ["Quote asset", c.pair || "—"],
     ["Market cap", fmtUsd(c.marketCap)],
     ["Fully diluted", fmtUsd(c.fdv)],
     ["Volume 24h", fmtUsd(c.volume24h)],
     ["Liquidity", fmtUsd(c.liquidityUsd)],
+    ["Holders", c.holders != null ? Number(c.holders).toLocaleString("en-US") : "—"],
     ["Buys / sells 24h", (c.buys24h != null || c.sells24h != null) ? (c.buys24h || 0) + " / " + (c.sells24h || 0) : "—"],
     ["1h / 6h / 24h", [c.change1h, c.change6h, c.change24h].map(fmtChg).join(" · ")],
     ["Created", c.createdAt ? new Date(c.createdAt).toUTCString() : "—"],
-    ["Token", `<a href="https://robinscan.io/token/${c.address}" target="_blank" rel="noopener">${c.address}</a>`],
+    ["Token", `<a href="https://robinhoodchain.blockscout.com/token/${c.address}" target="_blank" rel="noopener">${c.address}</a>`],
     ["Pool", c.poolId ? `<a href="https://dexscreener.com/robinhood/${c.poolId}" target="_blank" rel="noopener">${c.poolId}</a>` : "—"]
   ];
   if (equity) {
-    rows.splice(1, 0, ["Paired stock", c.pair + (s && s.name ? " — " + s.name : "")]);
-    rows.push(["Stock locked", (c.stockLockedUnits != null ? Number(c.stockLockedUnits).toFixed(2) + " " + c.pair : "—") + " · " + fmtUsd(c.stockLockedUsd)]);
-    rows.push(["Holders", c.holders != null ? Number(c.holders).toLocaleString("en-US") : "—"]);
-    rows.push(["Stock token", s && s.address ? `<a href="https://robinscan.io/token/${s.address}" target="_blank" rel="noopener">${s.address}</a>` : "—"]);
+    rows.splice(2, 0, ["Paired stock", c.pair + (s && s.name ? " — " + s.name : "")]);
+    rows.push(["Asset locked", (c.stockLockedUnits != null ? Number(c.stockLockedUnits).toFixed(2) + " " + c.pair : "—") + " · " + fmtUsd(c.stockLockedUsd)]);
+    rows.push(["Stock token", s && s.address ? `<a href="https://robinhoodchain.blockscout.com/token/${s.address}" target="_blank" rel="noopener">${s.address}</a>` : "—"]);
   }
   document.getElementById("file").innerHTML = rows.map((row) => `<tr><th>${row[0]}</th><td>${row[1]}</td></tr>`).join("");
 }
