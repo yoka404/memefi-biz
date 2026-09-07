@@ -30,4 +30,23 @@ footer a,.feature a{color:#8b6cff;text-decoration:none}
 footer a:hover,.feature a:hover{color:#c4b5fd}
 footer{text-transform:none;letter-spacing:.04em}
 #session{border:1px solid #1c1c24;border-radius:999px;padding:3px 8px}
+.stories li{padding:12px 14px;border-bottom:1px solid #1c1c24}
+.stories li:hover{background:#121217}
+.stories a.read{
+  display:inline-flex !important;
+  align-items:center;
+  gap:6px;
+  margin-top:8px;
+  width:auto !important;
+  padding:5px 11px !important;
+  border:1px solid #1c1c24;
+  background:#121217;
+  border-radius:999px;
+  color:#f4f4f5 !important;
+  font-size:12px;
+  font-weight:600;
+  text-decoration:none;
+}
+.stories a.read:hover{border-color:#8b6cff;color:#c4b5fd !important}
+.stories a.read .ico{font-size:13px;line-height:1}
 @media(max-width:720px){.chart-frame{height:360px}}
