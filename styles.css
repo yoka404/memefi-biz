@@ -20,7 +20,7 @@ nav{display:flex;gap:16px;flex:1;min-width:0}
 nav a{color:var(--mute);text-decoration:none;font-size:13px;font-weight:500}
 nav a.on{color:var(--purple)}
 .meta{font-size:12px;color:var(--purple);font-weight:500;margin-left:auto}
-.hero{display:grid;grid-template-columns:1fr 1fr;gap:40px;padding:40px 24px 16px;max-width:1280px;margin:0 auto;align-items:center}
+.hero{display:grid;grid-template-columns:1fr auto;gap:32px;padding:32px 24px 16px;max-width:1280px;margin:0 auto;align-items:center}
 .eyebrow{color:var(--purple);letter-spacing:.14em;text-transform:uppercase;font-size:11px;margin-bottom:10px;font-weight:600}
 h1{font-size:clamp(32px,6vw,52px);line-height:.98;font-weight:650;letter-spacing:-.03em}
 .lede{margin-top:14px;color:var(--mute);max-width:48ch;line-height:1.6;font-size:15px}
@@ -33,7 +33,7 @@ h1{font-size:clamp(32px,6vw,52px);line-height:.98;font-weight:650;letter-spacing
 .dn{color:var(--red);text-decoration:none;font-size:12px;font-weight:600}
 .fire{color:var(--amber);text-decoration:none;font-size:12px;font-weight:600}
 .mute{color:var(--mute);font-size:12px}
-figure img{width:100%;max-width:520px;border-radius:14px;display:block;border:1px solid var(--line)}
+figure img{width:180px;max-width:32vw;border-radius:18px;display:block;border:1px solid var(--line)}
 figcaption{margin-top:8px;color:var(--mute);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
 .news{display:grid;grid-template-columns:1.15fr .85fr;gap:12px;padding:8px 24px 24px;max-width:1280px;margin:0 auto}
 .feature-story{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px}
@@ -42,6 +42,7 @@ figcaption{margin-top:8px;color:var(--mute);font-size:11px;letter-spacing:.1em;t
 .byline{margin-top:14px;color:var(--mute);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
 .rail{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
 .card-head{display:flex;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.card-head.tight{border-bottom:0;padding-bottom:4px}
 .card-head h2{font-size:16px;font-weight:650}
 .card-head span{color:var(--mute);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
 .stories{list-style:none}
@@ -95,10 +96,25 @@ a.pair{color:inherit;text-decoration:none}
 .file a{color:var(--purple);text-decoration:none}
 .file td{white-space:normal;word-break:break-all}
 .feature{max-width:1440px;margin:0 16px 36px;display:flex;gap:14px;align-items:center;padding:14px;border-radius:14px;background:var(--card);border:1px solid var(--line)}
-.feature img{width:64px;height:64px;object-fit:cover;border-radius:12px;flex:0 0 64px}
+.feature img{width:48px;height:48px;object-fit:cover;border-radius:10px;flex:0 0 48px}
 .feature h2{font-size:clamp(18px,3vw,24px);margin:4px 0 8px}
 .feature p:last-child{color:var(--mute);font-size:14px;max-width:56ch}
 footer{text-align:center;color:#5c5c68;padding:20px 12px;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.snap-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+.snap-kpis div{background:var(--card);padding:16px 14px}
+.snap-kpis em{display:block;color:var(--mute);font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;font-style:normal}
+.snap-kpis b{display:block;font-size:22px;font-weight:650;font-variant-numeric:tabular-nums}
+.snap-kpis small{display:block;color:var(--mute);font-size:11px;margin-top:4px}
+.snap-split{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.snap-split > div{border-top:1px solid var(--line)}
+.snap-split > div + div{border-left:1px solid var(--line)}
+.snap-list{list-style:none}
+.snap-list a{display:flex;justify-content:space-between;gap:12px;padding:10px 14px;text-decoration:none;color:inherit;border-bottom:1px solid var(--line)}
+.snap-list a:hover{background:var(--elev)}
+.snap-list em{color:var(--mute);font-style:normal;font-size:11px}
+.snap-list .r{text-align:right;font-variant-numeric:tabular-nums}
+.snap-list .r b{display:block;font-size:13px}
+.snap-list .r small{display:block;font-size:11px}
 [data-tip]{position:relative}
 [data-tip]:hover::after{
   content:attr(data-tip);
@@ -109,9 +125,10 @@ footer{text-align:center;color:#5c5c68;padding:20px 12px;font-size:11px;letter-s
   box-shadow:0 8px 24px rgba(0,0,0,.55)
 }
 @media(max-width:980px){
-  .hero,.news{grid-template-columns:1fr}
+  .hero,.news,.snap-kpis,.snap-split{grid-template-columns:1fr}
+  .snap-split > div + div{border-left:0}
   figure{order:-1}
-  figure img{max-width:280px}
+  figure img{width:120px}
 }
 @media(max-width:720px){
   .nav{padding:10px 12px;gap:10px}
