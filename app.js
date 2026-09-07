@@ -260,9 +260,8 @@ async function loadWire() {
     ul.innerHTML = items.map((it) => {
       const src = String(it.source || "Wire").replace(/</g, "");
       const title = String(it.title || "").replace(/</g, "");
-      const blurb = String(it.blurb || "").replace(/</g, "");
       const href = String(it.url || "#").replace(/"/g, "");
-      return `<li><a href="${href}" target="_blank" rel="noopener"><em>${src}</em><strong>${title}</strong><span>${blurb}</span></a></li>`;
+      return `<li><em>${src}</em><strong>${title}</strong><a class="read" href="${href}" target="_blank" rel="noopener"><span class="ico">📰</span>Read</a></li>`;
     }).join("");
     const tag = document.getElementById("wire-tag");
     if (tag) { tag.textContent = "LIVE"; tag.classList.add("on-air"); }
