@@ -1,3 +1,11 @@
+const ICONS = {
+  x: '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M18.9 2H22l-6.8 7.8L23 22h-6.3l-4.9-6.4L6.3 22H3.2l7.3-8.4L1 2h6.5l4.4 5.8L18.9 2zm-1.1 18h1.7L6.3 3.9H4.5L17.8 20z"/></svg>',
+  telegram: '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M21.5 3.2L2.7 10.4c-1.3.5-1.3 1.2-.2 1.5l4.8 1.5 11.1-7c.5-.3 1-.1.6.2l-9 8.2-.3 4.8c.5 0 .7-.2 1-.5l2.4-2.3 5 3.7c.9.5 1.6.2 1.8-.8l3.3-15.4c.3-1.4-.5-2-1.7-1.6z"/></svg>',
+  website: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
+  discord: '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M19.3 5.2A18 18 0 0 0 14.9 4l-.2.4a16 16 0 0 1 3.1 1.2 16 16 0 0 0-13.6 0A16 16 0 0 1 9.3 4L9.1 4a18 18 0 0 0-4.4 1.2C1.9 9.1 1.2 12.8 1.4 16.5a18 18 0 0 0 5.4 2.7l.7-1.1a12 12 0 0 1-1.9-.9l.5-.4a13 13 0 0 0 11.8 0l.5.4a12 12 0 0 1-1.9.9l.7 1.1a18 18 0 0 0 5.4-2.7c.3-4.2-.5-7.8-2.3-11.3zM8.7 14.4c-.8 0-1.5-.8-1.5-1.7s.7-1.7 1.5-1.7 1.5.8 1.5 1.7-.7 1.7-1.5 1.7zm6.6 0c-.8 0-1.5-.8-1.5-1.7s.7-1.7 1.5-1.7 1.5.8 1.5 1.7-.7 1.7-1.5 1.7z"/></svg>',
+  dex: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h10M4 17h7"/></svg>'
+};
+
 function addrFromPath() {
   const parts = location.pathname.split("/").filter(Boolean);
   if (parts[0] === "p" && parts[1]) return parts[1].toLowerCase();
@@ -6,7 +14,7 @@ function addrFromPath() {
 function fmtPx(n) {
   const x = Number(n);
   if (!Number.isFinite(x)) return "—";
-  if (x >= 1) return "$" + x.toFixed(2);
+  if (x >= 1) return "$" + x.toLocaleString("en-US", { maximumFractionDigits: 2 });
   if (x >= 0.01) return "$" + x.toFixed(5);
   if (x > 0) return "$" + Number(x.toPrecision(4));
   return "—";
@@ -19,18 +27,27 @@ function fmtUsd(n) {
   if (Math.abs(x) >= 1e3) return "$" + (x / 1e3).toFixed(1) + "K";
   return "$" + Math.round(x);
 }
+function fmtChg(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "—";
+  const sign = x >= 0 ? "+" : "";
+  return sign + x.toFixed(2) + "%";
+}
 function prem(onchain, cash) {
   if (!Number.isFinite(onchain) || !Number.isFinite(cash) || cash <= 0) return null;
   return ((onchain / cash) - 1) * 100;
 }
-function labelSocial(type, url) {
+function socialKind(type, url) {
   const t = String(type || "").toLowerCase();
   const u = String(url || "").toLowerCase();
-  if (t === "twitter" || u.includes("x.com") || u.includes("twitter.com")) return "X";
-  if (t === "telegram" || u.includes("t.me")) return "Telegram";
-  if (t === "discord" || u.includes("discord")) return "Discord";
-  if (t === "website" || t === "web") return "Website";
-  return type || "Link";
+  if (t === "twitter" || u.includes("x.com") || u.includes("twitter.com")) return "x";
+  if (t === "telegram" || u.includes("t.me")) return "telegram";
+  if (t === "discord" || u.includes("discord")) return "discord";
+  if (t === "website" || t === "web") return "website";
+  return "website";
+}
+function labelKind(k) {
+  return { x: "X", telegram: "Telegram", discord: "Discord", website: "Website", dex: "Dex" }[k] || k;
 }
 function setAvatar(img, urls) {
   const queue = urls.filter(Boolean);
@@ -62,16 +79,18 @@ async function main() {
   const c = data.coin;
   const s = data.stock;
   const cash = data.cash;
-  const onchain = s && s.onchain;
-  const wrap = (Number(c.price) && Number(c.priceNative)) ? Number(c.price) / Number(c.priceNative) : onchain;
-  const p = prem(wrap, cash);
-  document.title = "$" + c.ticker + " / " + (c.pair || "") + " · MEMEFI";
-  document.getElementById("pad").textContent = (c.launchpad || "airlock") + " · Robinhood Chain";
+  const equity = data.isEquity;
+  const wrap = equity && s && s.onchain;
+  const p = equity ? prem(wrap, cash) : null;
+  document.title = (c.name || c.ticker) + " price · MEMEFI";
+  document.getElementById("pad").textContent = (c.chain || "robinhood") + " · " + (c.launchpad || "dex");
   title.textContent = c.name || c.ticker;
   document.getElementById("chips").innerHTML =
     `<span class="chip">$${c.ticker}</span>` +
-    (c.pair ? `<span class="chip">paired ${c.pair}</span>` : "");
-  document.getElementById("sub").textContent = "$" + c.ticker + " is quoted against tokenized " + (c.pair || "—") + ". Permanent file for this contract.";
+    (c.pair ? `<span class="chip">quoted in ${c.pair}</span>` : "");
+  document.getElementById("sub").textContent = equity
+    ? "$" + c.ticker + " is quoted against tokenized " + c.pair + "."
+    : "$" + c.ticker + " pool is quoted in " + (c.pair || "the paired asset") + ".";
   const stamp = document.getElementById("live-stamp");
   if (stamp) { stamp.classList.remove("waiting"); stamp.textContent = "Live pair"; }
   setAvatar(document.getElementById("avatar"), [c.dexImage, c.logoDetail, c.logo, c.imageUri]);
@@ -85,32 +104,49 @@ async function main() {
     f.hidden = false;
     f.textContent = "Flagged: " + data.flagged;
   }
-  const links = (c.socials || []).map((s) => `<a href="${s.url}" target="_blank" rel="noopener">${labelSocial(s.type, s.url)}</a>`);
-  if (c.dexUrl) links.push(`<a href="${c.dexUrl}" target="_blank" rel="noopener">DexScreener</a>`);
-  links.push(`<a href="https://www.geckoterminal.com/robinhood/tokens/${c.address}" target="_blank" rel="noopener">GeckoTerminal</a>`);
-  links.push(`<a href="https://robinscan.io/token/${c.address}" target="_blank" rel="noopener">Robinscan</a>`);
+  const links = (c.socials || []).map((row) => {
+    const k = socialKind(row.type, row.url);
+    return `<a href="${row.url}" target="_blank" rel="noopener">${ICONS[k] || ""}${labelKind(k)}</a>`;
+  });
+  if (c.dexUrl) links.push(`<a href="${c.dexUrl}" target="_blank" rel="noopener">${ICONS.dex}DexScreener</a>`);
+  links.push(`<a href="https://www.geckoterminal.com/robinhood/tokens/${c.address}" target="_blank" rel="noopener">${ICONS.website}GeckoTerminal</a>`);
+  links.push(`<a href="https://robinscan.io/token/${c.address}" target="_blank" rel="noopener">${ICONS.dex}Explorer</a>`);
   document.getElementById("socials").innerHTML = links.join("");
   const chg = Number(c.change24h);
-  const chgHtml = Number.isFinite(chg) ? `<s class="${chg >= 0 ? "up" : "dn"}">${chg >= 0 ? "+" : ""}${chg.toFixed(2)}%</s>` : "";
-  document.getElementById("pills").innerHTML = `
-    <div><em>Last</em><b>${fmtPx(c.price)}</b>${chgHtml}</div>
-    <div><em>${c.pair || "stock"} on-chain</em><b>${wrap != null ? fmtPx(wrap) : "—"}</b></div>
-    <div><em>Cash close</em><b>${cash != null ? fmtPx(cash) : "—"}</b></div>
-    <div><em>Premium</em><b>${p == null ? "n/a" : ((p > 0 ? "+" : "") + p.toFixed(1) + "%")}</b></div>
+  const chgHtml = Number.isFinite(chg) ? `<s class="${chg >= 0 ? "up" : "dn"}">${fmtChg(chg)}</s>` : "";
+  let pills = `
+    <div><em>Price</em><b>${fmtPx(c.price)}</b>${chgHtml}</div>
     <div><em>Market cap</em><b>${fmtUsd(c.marketCap)}</b></div>
-    <div><em>Volume 24h</em><b>${fmtUsd(c.volume24h)}</b></div>`;
+    <div><em>FDV</em><b>${fmtUsd(c.fdv)}</b></div>
+    <div><em>Volume 24h</em><b>${fmtUsd(c.volume24h)}</b></div>
+    <div><em>Liquidity</em><b>${fmtUsd(c.liquidityUsd)}</b></div>`;
+  if (equity) {
+    pills += `
+    <div><em>${c.pair} on-chain</em><b>${wrap != null ? fmtPx(wrap) : "—"}</b></div>
+    <div><em>Cash close</em><b>${cash != null ? fmtPx(cash) : "—"}</b></div>
+    <div><em>Premium</em><b>${p == null ? "n/a" : ((p > 0 ? "+" : "") + p.toFixed(1) + "%")}</b></div>`;
+  } else {
+    pills += `<div><em>1h</em><b class="${Number(c.change1h) >= 0 ? "up" : "dn"}">${fmtChg(c.change1h)}</b></div>`;
+  }
+  document.getElementById("pills").innerHTML = pills;
   const rows = [
-    ["Paired stock", (c.pair || "—") + (s && s.name ? " — " + s.name : "")],
+    ["Quote asset", c.pair || "—"],
+    ["Market cap", fmtUsd(c.marketCap)],
+    ["Fully diluted", fmtUsd(c.fdv)],
+    ["Volume 24h", fmtUsd(c.volume24h)],
     ["Liquidity", fmtUsd(c.liquidityUsd)],
-    ["Stock locked", (c.stockLockedUnits != null ? Number(c.stockLockedUnits).toFixed(2) + " " + c.pair : "—") + " · " + fmtUsd(c.stockLockedUsd)],
-    ["Holders", c.holders != null ? Number(c.holders).toLocaleString("en-US") : "—"],
-    ["Fee", c.lpFeePct != null ? c.lpFeePct + "%" : "—"],
-    ["LP", c.lockedForever ? "permanently locked" : "see contract"],
-    ["Launched", c.launchedAt || "—"],
+    ["Buys / sells 24h", (c.buys24h != null || c.sells24h != null) ? (c.buys24h || 0) + " / " + (c.sells24h || 0) : "—"],
+    ["1h / 6h / 24h", [c.change1h, c.change6h, c.change24h].map(fmtChg).join(" · ")],
+    ["Created", c.createdAt ? new Date(c.createdAt).toUTCString() : "—"],
     ["Token", `<a href="https://robinscan.io/token/${c.address}" target="_blank" rel="noopener">${c.address}</a>`],
-    ["Pool", c.poolId ? `<a href="https://dexscreener.com/robinhood/${c.poolId}" target="_blank" rel="noopener">${c.poolId.slice(0, 10)}…</a>` : "—"],
-    ["Stock token", s && s.address ? `<a href="https://robinscan.io/token/${s.address}" target="_blank" rel="noopener">${s.address}</a>` : "—"]
+    ["Pool", c.poolId ? `<a href="https://dexscreener.com/robinhood/${c.poolId}" target="_blank" rel="noopener">${c.poolId}</a>` : "—"]
   ];
+  if (equity) {
+    rows.splice(1, 0, ["Paired stock", c.pair + (s && s.name ? " — " + s.name : "")]);
+    rows.push(["Stock locked", (c.stockLockedUnits != null ? Number(c.stockLockedUnits).toFixed(2) + " " + c.pair : "—") + " · " + fmtUsd(c.stockLockedUsd)]);
+    rows.push(["Holders", c.holders != null ? Number(c.holders).toLocaleString("en-US") : "—"]);
+    rows.push(["Stock token", s && s.address ? `<a href="https://robinscan.io/token/${s.address}" target="_blank" rel="noopener">${s.address}</a>` : "—"]);
+  }
   document.getElementById("file").innerHTML = rows.map((row) => `<tr><th>${row[0]}</th><td>${row[1]}</td></tr>`).join("");
 }
 main();
