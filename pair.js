@@ -100,10 +100,11 @@ function setBanner(url, address) {
 function loadChart(poolId, address) {
   const box = document.getElementById("chart");
   if (!box) return;
-  const id = poolId || address;
-  if (!id) { box.textContent = "No pool on DexScreener"; return; }
-  const src = "https://dexscreener.com/robinhood/" + id + "?embed=1&loadChartSettings=0&trades=0&info=0&chartLeftToolbar=0&chartTheme=dark&theme=dark";
-  box.innerHTML = `<iframe title="DexScreener chart" src="${src}" allow="clipboard-write" loading="lazy"></iframe>`;
+  const pool = poolId && String(poolId).length > 12 ? String(poolId) : "";
+  const src = pool
+    ? "https://www.geckoterminal.com/robinhood/pools/" + encodeURIComponent(pool) + "?embed=1&info=0&swaps=0&light_chart=0&chart_type=price"
+    : "https://www.geckoterminal.com/robinhood/tokens/" + encodeURIComponent(address) + "?embed=1&info=0&swaps=0&light_chart=0";
+  box.innerHTML = `<iframe title="GeckoTerminal chart" src="${src}" allow="clipboard-write" loading="lazy"></iframe>`;
 }
 function shortAddr(a) {
   const s = String(a || "");
@@ -147,7 +148,10 @@ async function main() {
   if (stamp) { stamp.classList.remove("waiting"); stamp.classList.add("on-air"); }
   setAvatar(document.getElementById("avatar"), [
     c.dexImage,
+    "https://storage.long.xyz/tokens/" + c.address + ".png",
+    "https://storage.long.xyz/tokens/" + c.address + ".jpg",
     "https://dd.dexscreener.com/ds-data/tokens/robinhood/" + c.address + ".png",
+    c.geckoImage,
     c.logoDetail,
     c.logo,
     c.imageUri
@@ -162,8 +166,9 @@ async function main() {
     const k = socialKind(row.type, row.url);
     return `<a href="${row.url}" target="_blank" rel="noopener">${ICONS[k] || ""}${labelKind(k)}</a>`;
   });
+  if (c.poolId) links.push(`<a href="https://www.geckoterminal.com/robinhood/pools/${c.poolId}" target="_blank" rel="noopener">${ICONS.website}GeckoTerminal</a>`);
+  else links.push(`<a href="https://www.geckoterminal.com/robinhood/tokens/${c.address}" target="_blank" rel="noopener">${ICONS.website}GeckoTerminal</a>`);
   if (c.dexUrl) links.push(`<a href="${c.dexUrl}" target="_blank" rel="noopener">${ICONS.dex}DexScreener</a>`);
-  links.push(`<a href="https://www.geckoterminal.com/robinhood/tokens/${c.address}" target="_blank" rel="noopener">${ICONS.website}GeckoTerminal</a>`);
   links.push(`<a href="${SCAN}/token/${c.address}" target="_blank" rel="noopener">${ICONS.dex}RH-scan</a>`);
   document.getElementById("socials").innerHTML = links.join("");
   const chg = Number(c.change24h);
@@ -196,7 +201,7 @@ async function main() {
     ["1h / 6h / 24h", [c.change1h, c.change6h, c.change24h].map(fmtChg).join(" · ")],
     ["Created", c.createdAt ? new Date(c.createdAt).toUTCString() : "—"],
     ["Token", `<a href="${SCAN}/token/${c.address}" target="_blank" rel="noopener">${c.address}</a>`],
-    ["Pool", c.poolId ? `<a href="https://dexscreener.com/robinhood/${c.poolId}" target="_blank" rel="noopener">${c.poolId}</a>` : "—"]
+    ["Pool", c.poolId ? `<a href="https://www.geckoterminal.com/robinhood/pools/${c.poolId}" target="_blank" rel="noopener">${c.poolId}</a>` : "—"]
   ];
   if (equity) {
     rows.splice(2, 0, ["Paired stock", c.pair + (s && s.name ? " — " + s.name : "")]);
