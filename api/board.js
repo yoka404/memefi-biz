@@ -129,7 +129,7 @@ function buildSnapshot(uni, world, tape, util, headBlock) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("Cache-Control", "s-maxage=20, stale-while-revalidate=60");
+  res.setHeader("Cache-Control", "s-maxage=45, stale-while-revalidate=120");
   try {
     const uni = await buildUniverse();
     const map = {};
@@ -145,10 +145,10 @@ export default async function handler(req, res) {
     world.sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
     await fillDex(world.slice(0, 200), 80);
     const onchain = (uni && uni.onchain) || {};
-    await fillOnchainLocked(world.slice(0, 80), onchain);
+    await fillOnchainLocked(world.slice(0, 32), onchain);
     const tape = world.filter(onTape).sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
-    await fillHolders(world.slice(0, 80), 20);
-    await fillPads(tape.slice(0, 40), 40);
+    await fillHolders(world.slice(0, 40), 16);
+    await fillPads(tape.slice(0, 24), 24);
     tape.forEach((c, i) => { c.rank = i + 1; });
     const metals = tape.filter((c) => c.pair === "GLD" || c.pair === "SLV");
     const newest = tape.slice().sort((a, b) => String(b.createdAt || b.launchedAt || "").localeCompare(String(a.createdAt || a.launchedAt || ""))).slice(0, 80);
