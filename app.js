@@ -117,7 +117,7 @@ function renderRows(list) {
   const quotes = (CACHE && CACHE.quotes) || {};
   const onchain = (CACHE && CACHE.onchain) || {};
   const filtered = list.filter((c) => {
-    if (PAD !== "all" && padGroup(c.launchpad) !== PAD) return false;
+    if (PAD !== "all" && PAD !== "metals" && padGroup(c.launchpad) !== PAD) return false;
     return matchesQuery(c, raw);
   });
   const rows = document.getElementById("rows");
@@ -153,6 +153,7 @@ function renderRows(list) {
 
 function visibleList() {
   if (!CACHE) return [];
+  if (PAD === "metals") return CACHE.metals || [];
   return TAB === "new" ? (CACHE.newest || []) : (CACHE.top || []);
 }
 
@@ -168,10 +169,11 @@ function paint() {
   if (snap) {
     const listed = agg.listed || agg.coins || "—";
     const launches = agg.launches ? Number(agg.launches).toLocaleString("en-US") : "—";
-    snap.textContent = Number(listed).toLocaleString("en-US") + " listed of " + launches + " launches · DexScreener tick 1s on visible rows";
+    snap.textContent = Number(listed).toLocaleString("en-US") + " listed of " + launches + " launches · metals GLD/SLV on filter";
   }
   renderRows(visibleList());
-  const focus = (CACHE.top || []).find((c) => String(c.address || "").toLowerCase() === "0x385f4f8ae47651ce5f58f5265395a669f8281e18") ||
+  const focus = (CACHE.metals || []).find((c) => String(c.address || "").toLowerCase() === "0xcacb0e9caccee63ec4d82952e561a291c68bcb68") ||
+    (CACHE.top || []).find((c) => String(c.address || "").toLowerCase() === "0x385f4f8ae47651ce5f58f5265395a669f8281e18") ||
     (CACHE.top || []).find((c) => c.ticker === "AI") || (CACHE.top || [])[0];
   if (focus) {
     const c = rowCoin(focus);
@@ -214,10 +216,8 @@ async function tickLive() {
       if (p && p.pairAddress) LIVE[p.pairAddress.toLowerCase()] = p;
     }
     paint();
-  } catch (e) {
-  } finally {
-    ticking = false;
-  }
+  } catch (e) {}
+  finally { ticking = false; }
 }
 
 async function refresh() {
