@@ -21,6 +21,13 @@ function num(n) {
   const x = Number(n);
   return Number.isFinite(x) ? x.toLocaleString('en-US') : '-';
 }
+function pct(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return '-';
+  if (x >= 10) return x.toFixed(1) + '%';
+  if (x >= 1) return x.toFixed(2) + '%';
+  return x.toFixed(3) + '%';
+}
 function chg(n) {
   const x = Number(n);
   if (!Number.isFinite(x)) return { t: '-', c: 'mute' };
@@ -59,6 +66,21 @@ function row(c, right, sub) {
   const alts = imgs.slice(1).join('|');
   return '<li><a href="' + href + '"><img src="' + src + '" data-alts="' + alts + '" alt="" width="28" height="28" onerror="imgErr(this)"/><span><strong>' + esc(c.name || c.ticker) + '</strong> <em>' + esc(c.ticker || '') + ' / ' + esc(c.pair || '') + '</em></span><span class="r"><b>' + right + '</b><small class="' + klass + '">' + esc(extra) + '</small></span></a></li>';
 }
+function paintUtil(util) {
+  const box = document.getElementById('snap-util');
+  if (!box) return;
+  if (!util || !(util.rows || []).length) {
+    box.innerHTML = '';
+    return;
+  }
+  const chips = (util.rows || []).filter(function (r) { return r.aum || r.lockedUsd; }).map(function (r) {
+    const tip = r.symbol + ' wrapper AUM ' + money(r.aum) + '. ' + money(r.lockedUsd) + ' sits in meme pools (' + pct(r.pct) + '). AUM is on-chain supply times the wrapper print. Locked is the stock token in those pools.';
+    return '<div class="u" data-tip="' + esc(tip) + '"><em>' + esc(r.symbol) + '</em><b>' + pct(r.pct) + '</b><small>' + money(r.lockedUsd) + ' / ' + money(r.aum) + '</small></div>';
+  });
+  const headTip = 'Wrapper AUM is on-chain supply of the official stock or metal token times its on-chain print. Locked is how much of that wrapper sits in meme pools on this tape. The percent is locked divided by AUM. If AUM rises and locked does not, utilization falls.';
+  const total = '<div class="u total" data-tip="' + esc(headTip) + '"><em>Tape</em><b>' + pct(util.pct) + '</b><small>' + money(util.locked) + ' locked / ' + money(util.aum) + ' AUM</small></div>';
+  box.innerHTML = total + chips.join('');
+}
 function paintSnapshot(s) {
   if (!s) return;
   function set(id, v) {
@@ -66,9 +88,9 @@ function paintSnapshot(s) {
     if (el) el.textContent = v;
   }
   set('kpi-locked', money(s.stockLockedUsd));
-  set('kpi-locked-sub', s.stockLockedKnown != null ? 'unwithdrawable / ' + num(s.stockLockedKnown) + ' priced pools' : 'unwithdrawable');
+  set('kpi-locked-sub', s.stockLockedKnown != null ? 'in meme pools / ' + num(s.stockLockedKnown) + ' priced' : 'in meme pools');
   set('kpi-coins', num(s.coinsListed));
-  set('kpi-coins-sub', s.launches != null ? 'of ' + num(s.launches) + ' on-chain launches' : 'listed');
+  set('kpi-coins-sub', s.launches != null ? 'of ' + num(s.launches) + ' indexed pools' : 'listed');
   set('kpi-eq', num(s.equitiesPaired));
   set('kpi-vol', money(s.volume24h));
   const bits = [];
@@ -77,6 +99,7 @@ function paintSnapshot(s) {
   set('kpi-vol-sub', bits.join(' / ') || '24h');
   const blk = document.getElementById('snap-block');
   if (blk) blk.textContent = s.headBlock ? 'block ' + num(s.headBlock) : 'on-chain';
+  paintUtil(s.util);
   const movers = document.getElementById('snap-movers');
   if (movers) {
     const list = (s.movers || []).filter(function (c) { return Number(c.marketCap) >= 3e6; });
