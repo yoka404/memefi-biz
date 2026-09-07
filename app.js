@@ -93,6 +93,11 @@ function matchesQuery(c, q) {
   const u = q.toUpperCase();
   return (c.ticker || "").toUpperCase().includes(u) || (c.pair || "").toUpperCase().includes(u) || (c.name || "").toUpperCase().includes(u);
 }
+function goLive(el) {
+  if (!el) return;
+  el.classList.remove("waiting");
+  el.classList.add("on-air");
+}
 
 let TAB = "top";
 let PAD = "all";
@@ -164,10 +169,11 @@ function paint() {
   if (!CACHE) return;
   const reason = cashSession(new Date());
   const stamp = document.getElementById("live-stamp");
-  if (stamp) {
-    stamp.textContent = reason + " · live 1s";
-    stamp.setAttribute("data-tip", "NYSE cash session. Tokenized stocks and metals cannot mint or redeem while cash is closed.");
-  }
+  const liveText = document.getElementById("live-text");
+  if (liveText) liveText.textContent = reason + " · live";
+  else if (stamp) stamp.textContent = reason + " · live";
+  goLive(stamp);
+  if (stamp) stamp.setAttribute("data-tip", "NYSE cash session. Tokenized stocks and metals cannot mint or redeem while cash is closed.");
   const sessEl = document.getElementById("session");
   if (sessEl) sessEl.textContent = reason;
   const agg = CACHE.aggregates || {};
@@ -175,7 +181,8 @@ function paint() {
   if (snap) {
     const listed = agg.listed || agg.coins || "—";
     const launches = agg.launches ? Number(agg.launches).toLocaleString("en-US") : "—";
-    snap.textContent = Number(listed).toLocaleString("en-US") + " listed of " + launches + " launches · DexScreener logos";
+    snap.textContent = Number(listed).toLocaleString("en-US") + " listed of " + launches + " launches";
+    snap.classList.remove("waiting");
   }
   renderRows(visibleList());
   const focus = (CACHE.metals || []).find((c) => String(c.address || "").toLowerCase() === "0xcacb0e9caccee63ec4d82952e561a291c68bcb68") ||
@@ -184,13 +191,13 @@ function paint() {
   if (focus) {
     const c = rowCoin(focus);
     const el = document.getElementById("px");
-    if (el) el.textContent = fmtPx(c.price).replace(/^\$/, "");
+    if (el) { el.textContent = fmtPx(c.price).replace(/^\$/, ""); el.classList.remove("waiting"); }
     const chg = fmtChg(c.change24h);
     const s = document.getElementById("pxchg");
     if (s) { s.textContent = chg.text; s.className = chg.cls; }
     const wrap = c._wrap != null ? c._wrap : CACHE.onchain[c.pair];
     const under = document.getElementById("under");
-    if (under && wrap != null) under.textContent = fmtPx(wrap).replace(/^\$/, "");
+    if (under && wrap != null) { under.textContent = fmtPx(wrap).replace(/^\$/, ""); under.classList.remove("waiting"); }
     const cash = CACHE.quotes[c.pair];
     const premEl = document.getElementById("prem");
     if (premEl) {
@@ -258,7 +265,7 @@ async function loadWire() {
       return `<li><a href="${href}" target="_blank" rel="noopener"><em>${src}</em><strong>${title}</strong><span>${blurb}</span></a></li>`;
     }).join("");
     const tag = document.getElementById("wire-tag");
-    if (tag) tag.textContent = "Live";
+    if (tag) { tag.textContent = "LIVE"; tag.classList.add("on-air"); }
   } catch (e) {}
 }
 
