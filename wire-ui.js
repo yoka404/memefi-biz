@@ -1,18 +1,23 @@
 function clean(s) {
-  return String(s || "")
-    .replace(/</g, "<")
-    .replace(/>/g, ">")
-    .replace(/"/g, '"')
-    .replace(/&/g, "&")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  let t = String(s || "");
+  for (let i = 0; i < 3; i++) {
+    t = t.split("\u0026amp;").join("&").split("\u0026lt;").join("<").split("\u0026gt;").join(">").split("\u0026quot;").join('"');
+  }
+  t = t.replace(/<[^>]*>/g, " ").replace(/<[^>]*$/g, " ");
+  t = t.replace(/https?:\/\/news\.google\.com\/\S+/g, " ");
+  return t.replace(/\s+/g, " ").trim();
+}
+function okBlurb(s) {
+  const t = String(s || "");
+  if (!t) return "";
+  if (/href\s*=|<a\s|news\.google|<font|<|>/i.test(t)) return "";
+  return t.slice(0, 140);
 }
 function paintWire(items) {
   const track = document.getElementById("wire-track");
   const dots = document.getElementById("wire-dots");
   if (!track) return;
-  const list = (items || []).slice(0, 20);
+  const list = (items || []).filter((it) => it && it.title && it.url).slice(0, 20);
   if (!list.length) {
     track.innerHTML = '<article class="wire-card empty"><p>Wire is quiet.</p></article>';
     return;
@@ -22,9 +27,8 @@ function paintWire(items) {
     const img = String(it.image || "").replace(/"/g, "");
     const src = clean(it.source || "Wire");
     const title = clean(it.title || "");
-    let blurb = clean(it.blurb || "").slice(0, 140);
-    if (/^https?:|^href=|^<a /i.test(blurb)) blurb = "";
-    const photo = img && !/news\.google|gstatic|google\.com\/images/i.test(img)
+    const blurb = okBlurb(clean(it.blurb || ""));
+    const photo = img && !/news\.google|gstatic|google\.com\/images|default-logo|og-banners\/home/i.test(img)
       ? '<img src="' + img + '" alt="" loading="' + (i ? "lazy" : "eager") + '" onerror="this.replaceWith(Object.assign(document.createElement(\'div\'),{className:\'ph\'}))"/>'
       : '<div class="ph"></div>';
     return '<a class="wire-card" href="' + href + '" target="_blank" rel="noopener">' +
@@ -60,7 +64,7 @@ function currentIndex() {
 }
 async function loadCarousel() {
   try {
-    const r = await fetch("/api/wire");
+    const r = await fetch("/api/wire", { cache: "no-store" });
     if (!r.ok) return;
     const data = await r.json();
     paintWire(data.items || []);
