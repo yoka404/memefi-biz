@@ -1,5 +1,13 @@
-const HOLIDAYS = new Set(["2026-09-07", "2026-11-26", "2026-12-25"]);
-
+function pfp(c) {
+  const out = [];
+  if (c.logo) out.push("https://memefimarketcap.com/" + String(c.logo).replace(/^\//, ""));
+  else if (c.address) out.push("https://memefimarketcap.com/assets/logos/coin/" + c.address + ".webp");
+  if (c.imageUri) {
+    const u = String(c.imageUri);
+    out.push(u.indexOf("ipfs://") === 0 ? "https://ipfs.io/ipfs/" + u.slice(7) : u);
+  }
+  return out.filter(Boolean);
+}
 function fmtPx(n) {
   const x = Number(n);
   if (!Number.isFinite(x)) return "—";
@@ -100,9 +108,7 @@ function rowCoin(c) {
   if (live.priceChange && live.priceChange.h24 != null) out.change24h = Number(live.priceChange.h24);
   const meme = Number(live.priceUsd);
   const native = Number(live.priceNative);
-  if (Number.isFinite(meme) && Number.isFinite(native) && native > 0) {
-    out._wrap = meme / native;
-  }
+  if (Number.isFinite(meme) && Number.isFinite(native) && native > 0) out._wrap = meme / native;
   return out;
 }
 
@@ -123,13 +129,13 @@ function renderRows(list) {
     const cash = quotes[c.pair];
     const pr = fmtPrem(premium(wrap, cash));
     const href = c.address ? "/p/" + c.address : "";
-    const logo = c.address ? "https://memefimarketcap.com/assets/logos/coin/" + c.address + ".webp" : "/memefi.png";
+    const imgs = pfp(c);
     const flag = c.flagged ? `<small class="flag">flagged</small>` : `<small>${padLabel(c.launchpad)}</small>`;
     return `<tr data-href="${href}" data-pool="${c.poolId || ""}">
       <td class="num">${c.rank || i + 1}</td>
       <td>
         <a class="pair namecell" href="${href}">
-          <img src="${logo}" alt="" onerror="this.src='/memefi.png'"/>
+          <img src="${imgs[0] || ""}" data-alts="${imgs.slice(1).join("|")}" alt="" onerror="(function(el){var a=(el.getAttribute('data-alts')||'').split('|').filter(Boolean);if(!a.length){el.onerror=null;el.removeAttribute('src');return;}el.src=a.shift();el.setAttribute('data-alts',a.join('|'));})(this)"/>
           <span class="nm"><strong>${c.name || c.ticker} <span>${c.ticker}</span></strong>${flag}</span>
         </a>
       </td>
