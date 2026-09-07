@@ -1,7 +1,9 @@
 export const config = { maxDuration: 30 };
 
-const YAHOO = ["AMC","NVDA","HIMS","MU","MSTR","TSLA","HOOD","AAPL","GME","SPY","MSFT","AMD","AMZN","META","GOOGL","NFLX","PLTR","INTC","BABA","COIN","RBLX","DJT","GLD","QQQ","IWM"];
+const YAHOO = ["AMC","NVDA","HIMS","MU","MSTR","TSLA","HOOD","AAPL","GME","SPY","MSFT","AMD","AMZN","META","GOOGL","NFLX","PLTR","INTC","BABA","COIN","RBLX","DJT","GLD","SLV","QQQ","IWM"];
+const METALS = new Set(["GLD","SLV"]);
 const PIN = "0x385f4f8ae47651ce5f58f5265395a669f8281e18".toLowerCase();
+const PIN_GG = "0xcacb0e9caccee63ec4d82952e561a291c68bcb68".toLowerCase();
 
 async function yahoo(symbol) {
   const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(symbol) + "?interval=1d&range=5d";
@@ -53,6 +55,11 @@ export default async function handler(req, res) {
       .sort((a, b) => String(b.launchedAt || "").localeCompare(String(a.launchedAt || "")))
       .slice(0, 80)
       .map((c, i) => slim(c, i + 1));
+    let metals = coins
+      .filter((c) => METALS.has(String(c.pair || "").toUpperCase()))
+      .sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0))
+      .slice(0, 120)
+      .map((c, i) => slim(c, i + 1));
     const anomalies = dump.anomalies || [];
     const flagged = anomalies.map((c) => slim(c, null, { flagged: true, flag: c.gate || c.why || "anomalous" }));
     const pin = flagged.find((c) => String(c.address || "").toLowerCase() === PIN) ||
@@ -64,8 +71,16 @@ export default async function handler(req, res) {
         poolId: "0x27ccf0a6d1ee74840220715bcca7d3b01e0d33aa30d0259b47ae1585b3f4c071",
         pair: "AMC"
       }, null, { flagged: true, flag: "excluded-from-reference-rank" });
-    const havePin = top.some((c) => String(c.address || "").toLowerCase() === PIN);
-    if (!havePin) top = [pin].concat(top);
+    const gg = slim({
+      ticker: "GG",
+      name: "Golden Goose",
+      launchpad: "uniswap",
+      address: PIN_GG,
+      poolId: "0x9009d141e9189ca9d19d565468078383c192c2fa1d6f855957507bf8539643c5",
+      pair: "GLD"
+    }, null, {});
+    if (!top.some((c) => String(c.address || "").toLowerCase() === PIN)) top = [pin].concat(top);
+    if (!metals.some((c) => String(c.address || "").toLowerCase() === PIN_GG)) metals = [gg].concat(metals);
     const quotes = {};
     await Promise.all(YAHOO.map(async (s) => {
       try {
@@ -87,6 +102,7 @@ export default async function handler(req, res) {
         launches: listing.totalLaunchesOnChain,
         listed: listing.listed,
         equities: (dump.aggregates && dump.aggregates.equitiesPaired) || Object.keys(stocks).length,
+        metals: metals.length,
         volume24h: dump.aggregates && dump.aggregates.volume24hUsd && dump.aggregates.volume24hUsd.total,
         stockLockedUsd: dump.aggregates && dump.aggregates.stockLockedUsd && dump.aggregates.stockLockedUsd.total,
         byLaunchpad: listing.byLaunchpad || {}
@@ -95,6 +111,7 @@ export default async function handler(req, res) {
       onchain,
       top,
       newest,
+      metals,
       flagged
     });
   } catch (e) {
