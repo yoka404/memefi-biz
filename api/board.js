@@ -163,6 +163,7 @@ export default async function handler(req, res) {
       },
       quotes,
       onchain,
+      logos: (uni && uni.logos) || {},
       top: coins.slice(0, 250),
       newest,
       metals,
