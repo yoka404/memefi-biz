@@ -1,3 +1,5 @@
+window.__PFP_OK = window.__PFP_OK || {};
+window.__STK_OK = window.__STK_OK || {};
 function letterSvg(label) {
   const t = String(label || "?").replace(/[^A-Za-z0-9]/g, "").slice(0, 2).toUpperCase() || "?";
   const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' rx='12' fill='#16161c'/><text x='32' y='40' text-anchor='middle' font-family='Inter,system-ui,sans-serif' font-size='22' font-weight='650' fill='#c4c4cc'>" + t + "</text></svg>";
@@ -6,6 +8,7 @@ function letterSvg(label) {
 function pfp(c) {
   const addr = String(c.address || "").toLowerCase();
   const tick = String(c.ticker || "").toLowerCase();
+  if (addr && window.__PFP_OK[addr]) return [window.__PFP_OK[addr]];
   const out = [];
   if (c.dexImage) out.push(c.dexImage);
   if (addr) {
@@ -126,6 +129,7 @@ function mcapOf(c) {
   return Number.isFinite(n) ? n : 0;
 }
 function stockImgs(pair, logos) {
+  if (pair && window.__STK_OK[pair]) return [window.__STK_OK[pair]];
   const out = [];
   const pack = logos && logos[pair];
   if (typeof pack === "string") out.push(pack);
@@ -188,15 +192,16 @@ function renderRows(list) {
     const pu = padUrl(c.launchpad, c.address, c.ticker);
     const padHtml = pu ? `<a class="padlink" href="${pu}" target="_blank" rel="noopener">${padLabel(c.launchpad)}</a>` : `<small>${padLabel(c.launchpad)}</small>`;
     const flag = c.flagged ? `<small class="flag" data-tip="Excluded from the reference rank. Pool math looks impossible.">flagged</small>` : padHtml;
+    const addr = String(c.address || "").toLowerCase();
     return `<tr data-href="${href}" data-pool="${c.poolId || ""}">
       <td class="num">${i + 1}</td>
       <td>
         <a class="pair namecell" href="${href}">
-          <img src="${imgs[0] || ""}" data-alts="${imgs.slice(1).join("|")}" alt="" onerror="(function(el){var a=(el.getAttribute('data-alts')||'').split('|').filter(Boolean);if(!a.length){el.onerror=null;el.removeAttribute('src');return;}el.src=a.shift();el.setAttribute('data-alts',a.join('|'));})(this)"/>
+          <img src="${imgs[0] || ""}" data-key="${addr}" data-alts="${imgs.slice(1).join("|")}" alt="" onload="if(this.dataset.key)window.__PFP_OK[this.dataset.key]=this.src" onerror="(function(el){var a=(el.getAttribute('data-alts')||'').split('|').filter(Boolean);if(!a.length){el.onerror=null;el.removeAttribute('src');return;}el.src=a.shift();el.setAttribute('data-alts',a.join('|'));})(this)"/>
           <span class="nm"><strong>${c.name || c.ticker} <span>${c.ticker}</span></strong>${flag}</span>
         </a>
       </td>
-      <td><div class="stock"><img class="stock-logo" src="${sl[0] || ""}" data-alts="${sl.slice(1).join("|")}" alt="" width="18" height="18" loading="lazy" onerror="(function(el){var a=(el.getAttribute('data-alts')||'').split('|').filter(Boolean);if(!a.length){el.onerror=null;el.removeAttribute('src');return;}el.src=a.shift();el.setAttribute('data-alts',a.join('|'));})(this)"/><span><b>${c.pair || "—"}</b><em>${wrap != null ? fmtPx(wrap) : "—"}</em></span></div></td>
+      <td><div class="stock"><img class="stock-logo" src="${sl[0] || ""}" data-key="${c.pair || ""}" data-alts="${sl.slice(1).join("|")}" alt="" width="18" height="18" loading="lazy" onload="if(this.dataset.key)window.__STK_OK[this.dataset.key]=this.src" onerror="(function(el){var a=(el.getAttribute('data-alts')||'').split('|').filter(Boolean);if(!a.length){el.onerror=null;el.removeAttribute('src');return;}el.src=a.shift();el.setAttribute('data-alts',a.join('|'));})(this)"/><span><b>${c.pair || "—"}</b><em>${wrap != null ? fmtPx(wrap) : "—"}</em></span></div></td>
       <td class="px">${fmtPx(c.price)}</td>
       <td class="${chg.cls}">${chg.text}</td>
       <td class="mcap">${fmtUsd(c.marketCap)}</td>
