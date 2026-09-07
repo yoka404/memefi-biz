@@ -74,11 +74,11 @@ function paintUtil(util) {
     return;
   }
   const chips = (util.rows || []).filter(function (r) { return r.aum || r.lockedUsd; }).map(function (r) {
-    const tip = r.symbol + ' wrapper AUM ' + money(r.aum) + '. ' + money(r.lockedUsd) + ' sits in meme pools (' + pct(r.pct) + '). AUM is on-chain supply times the wrapper print. Locked is the stock token in those pools.';
-    return '<div class="u" data-tip="' + esc(tip) + '"><em>' + esc(r.symbol) + '</em><b>' + pct(r.pct) + '</b><small>' + money(r.lockedUsd) + ' / ' + money(r.aum) + '</small></div>';
+    const tip = r.symbol + ': ' + money(r.lockedUsd) + ' of the official wrapper sits in meme pools, versus ' + money(r.aum) + ' outstanding (on-chain supply x wrapper price).';
+    return '<div class="u" data-tip="' + esc(tip) + '"><em>' + esc(r.symbol) + '</em><b>' + pct(r.pct) + '</b><small>' + money(r.lockedUsd) + ' in pools / ' + money(r.aum) + '</small></div>';
   });
-  const headTip = 'Wrapper AUM is on-chain supply of the official stock or metal token times its on-chain print. Locked is how much of that wrapper sits in meme pools on this tape. The percent is locked divided by AUM. If AUM rises and locked does not, utilization falls.';
-  const total = '<div class="u total" data-tip="' + esc(headTip) + '"><em>Tape</em><b>' + pct(util.pct) + '</b><small>' + money(util.locked) + ' locked / ' + money(util.aum) + ' AUM</small></div>';
+  const headTip = 'Share of official stock and metal tokens that sit in meme pools, versus outstanding wrapper value (supply x on-chain price) for names listed here.';
+  const total = '<div class="u total" data-tip="' + esc(headTip) + '"><em>In pools</em><b>' + pct(util.pct) + '</b><small>' + money(util.locked) + ' locked / ' + money(util.aum) + ' outstanding</small></div>';
   box.innerHTML = total + chips.join('');
 }
 function paintSnapshot(s) {
