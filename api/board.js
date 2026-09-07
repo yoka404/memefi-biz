@@ -86,6 +86,7 @@ function mergeRow(base, live) {
     stockLockedUsd: (base && base.stockLockedUsd != null) ? base.stockLockedUsd : live.stockLockedUsd,
     logo: (base && base.logo) || live.logo,
     imageUri: (base && base.imageUri) || live.imageUri,
+    geckoImage: (base && base.geckoImage) || live.geckoImage,
     marketCap: pickMcap(live, base),
     price: live.price != null ? live.price : (base && base.price),
     volume24h: live.volume24h != null ? live.volume24h : (base && base.volume24h),
@@ -134,6 +135,43 @@ function buildLogos(rh) {
   return out;
 }
 
+function lite(c) {
+  return {
+    ticker: c.ticker,
+    name: c.name,
+    address: c.address,
+    pair: c.pair,
+    price: c.price,
+    change24h: c.change24h,
+    stockLockedUsd: c.stockLockedUsd,
+    stockLockedUnits: c.stockLockedUnits
+  };
+}
+
+function buildSnapshot(dump, trusted) {
+  const agg = (dump && dump.aggregates) || {};
+  const listing = (dump && dump.listing) || {};
+  const lockedUsd = agg.stockLockedUsd && agg.stockLockedUsd.total;
+  const vol = agg.volume24hUsd && agg.volume24hUsd.total;
+  const fees = agg.fees24hUsd && agg.fees24hUsd.total;
+  const holders = agg.holders && agg.holders.total;
+  const movers = trusted.filter((c) => Number.isFinite(Number(c.change24h))).sort((a, b) => Number(b.change24h) - Number(a.change24h)).slice(0, 3).map(lite);
+  const locked = trusted.filter((c) => Number(c.stockLockedUsd) > 0).sort((a, b) => Number(b.stockLockedUsd) - Number(a.stockLockedUsd)).slice(0, 3).map(lite);
+  return {
+    stockLockedUsd: lockedUsd,
+    stockLockedKnown: agg.stockLockedUsd && agg.stockLockedUsd.known,
+    coinsListed: agg.coinsListed || listing.listed,
+    launches: listing.totalLaunchesOnChain,
+    equitiesPaired: agg.equitiesPaired,
+    volume24h: vol,
+    fees24h: fees,
+    holders: holders,
+    headBlock: dump && dump.meta && dump.meta.headBlock,
+    movers: movers,
+    locked: locked
+  };
+}
+
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "s-maxage=20, stale-while-revalidate=60");
   try {
@@ -156,8 +194,8 @@ export default async function handler(req, res) {
       for (const c of dump.anomalies) {
         if (!c || !c.address) continue;
         const addr = String(c.address).toLowerCase();
-        const trusted = TRUSTED.has(padGroup(c.launchpad));
-        map[addr] = slimDump(c, { flagged: !trusted, flag: c.gate || c.why || null, listed: trusted });
+        const trustedPad = TRUSTED.has(padGroup(c.launchpad));
+        map[addr] = slimDump(c, { flagged: !trustedPad, flag: c.gate || c.why || null, listed: trustedPad });
       }
     }
     for (const c of (uni && uni.coins) || []) {
@@ -201,6 +239,7 @@ export default async function handler(req, res) {
         metals: metals.length,
         volume24h: trusted.reduce((n, c) => n + (Number(c.volume24h) || 0), 0)
       },
+      snapshot: buildSnapshot(dump, trusted),
       quotes,
       onchain,
       logos: buildLogos((uni && uni.logos) || {}),
