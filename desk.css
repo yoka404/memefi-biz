@@ -22,6 +22,16 @@
 .signoff{display:flex;gap:18px;align-items:center;justify-content:center;padding:56px 16px 40px;border-top:1px solid var(--line);margin-top:12px;text-align:left}
 .signoff img{width:88px;height:88px;border-radius:18px;border:1px solid var(--line);object-fit:cover}
 .signoff .mark{font-size:clamp(22px,4.2vw,36px);line-height:.96;font-weight:650;letter-spacing:-.03em}
+[data-tip]:hover::after{pointer-events:none;z-index:50}
+.filters [data-tip]:hover::after,
+.snap-util [data-tip]:hover::after,
+.snap-kpis [data-tip]:hover::after{
+  top:auto;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);max-width:min(240px,70vw)
+}
+.filters [data-pad="metals"][data-tip]:hover::after,
+.snap-util .u:last-child[data-tip]:hover::after{
+  left:auto;right:0;transform:none
+}
 @media(max-width:720px){
   .signoff{flex-direction:column;text-align:center}
   .wire-card{flex-basis:min(300px,86vw)}
