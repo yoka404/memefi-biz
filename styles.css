@@ -50,11 +50,12 @@ table.tape{width:100%;border-collapse:collapse;font-size:13px}
 .tape tr:hover td{background:#141a22;cursor:pointer}
 .tape .num{color:#6b7380;width:36px}
 .namecell{display:flex;align-items:center;gap:10px}
-.namecell img{width:32px;height:32px;border-radius:50%;object-fit:cover;background:#222}
+.namecell img{width:32px;height:32px;border-radius:50%;object-fit:cover;background:#1a222c}
 .namecell .nm{display:flex;flex-direction:column;gap:2px}
 .namecell strong{font-size:13px;color:#e8eef4}
 .namecell strong span{color:#8b95a1;font-weight:500;margin-left:6px}
 .namecell small{color:#6b7380;font-size:11px}
+.flag{color:#e8c36a !important;letter-spacing:.08em;text-transform:uppercase}
 a.pair{color:inherit;text-decoration:none}
 .stock{display:inline-flex;flex-direction:column;gap:2px;background:#141b22;border:1px solid #22303c;border-radius:10px;padding:6px 10px;min-width:92px}
 .stock b{font-size:12px;letter-spacing:.04em}
@@ -64,9 +65,18 @@ a.pair{color:inherit;text-decoration:none}
 .locked small{color:#7f9d93}
 .px{font-variant-numeric:tabular-nums;color:#e8eef4;font-weight:600}
 .mcap,.vol{font-variant-numeric:tabular-nums}
+.profile{max-width:1100px;margin:0 auto;padding:40px 40px 12px}
+.profile-top{display:flex;gap:22px;align-items:flex-start}
+.profile-top img{width:96px;height:96px;border-radius:24px;object-fit:cover;background:#1a222c;border:1px solid #22303c}
+.profile .lede{margin-top:8px}
+.socials{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.socials a{border:1px solid #2a3340;border-radius:999px;padding:5px 10px;color:#d8d2c6;text-decoration:none;font-size:12px;text-transform:capitalize}
+.socials a:hover{border-color:#c4a574;color:#f4efe6}
+.flagline{margin-top:16px;color:#e8c36a;font-size:13px}
+.file th{width:160px;color:#7d8793}
 .feature{max-width:1440px;margin:0 auto 48px;display:flex;gap:18px;align-items:center;padding:18px;border-radius:20px;background:#13121a;border:1px solid rgba(212,160,192,.25)}
 .feature img{width:80px;height:80px;object-fit:cover;border-radius:16px}
 .feature h2{font-family:"Cormorant Garamond",serif;font-size:32px;margin:4px 0 8px}
 .feature p:last-child{color:#8b8478;font-size:14px;max-width:52ch}
 footer{text-align:center;color:#5e594f;padding:24px;font-size:11px;letter-spacing:.14em;text-transform:uppercase}
-@media(max-width:860px){.hero,.news,.layout{grid-template-columns:1fr;padding-left:18px;padding-right:18px}h1{font-size:48px}.feature-story h2{font-size:28px}nav{display:none}}
+@media(max-width:860px){.hero,.news,.layout,.profile{grid-template-columns:1fr;padding-left:18px;padding-right:18px}h1{font-size:48px}.feature-story h2{font-size:28px}nav{display:none}.profile-top{flex-direction:column}}
