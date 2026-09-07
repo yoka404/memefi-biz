@@ -74,9 +74,9 @@ function lite(c) {
   };
 }
 
-async function wrapperUtil(tape, onchain) {
+async function wrapperUtil(coins, onchain) {
   const by = {};
-  for (const c of tape || []) {
+  for (const c of coins || []) {
     const sym = String(c.pair || "").toUpperCase();
     if (!sym) continue;
     if (!by[sym]) by[sym] = { symbol: sym, lockedUsd: 0, stockAddress: null };
@@ -100,24 +100,24 @@ async function wrapperUtil(tape, onchain) {
   };
 }
 
-function buildSnapshot(uni, tape, util, headBlock) {
-  const lockedUsd = tape.reduce((n, c) => n + (Number(c.stockLockedUsd) || 0), 0);
-  const lockedKnown = tape.filter((c) => Number(c.stockLockedUsd) > 0).length;
-  const vol = tape.reduce((n, c) => n + (Number(c.volume24h) || 0), 0);
-  const holders = tape.reduce((n, c) => n + (Number(c.holders) || 0), 0);
-  const pairs = new Set(tape.map((c) => c.pair).filter(Boolean));
+function buildSnapshot(uni, world, tape, util, headBlock) {
+  const lockedUsd = world.reduce((n, c) => n + (Number(c.stockLockedUsd) || 0), 0);
+  const lockedKnown = world.filter((c) => Number(c.stockLockedUsd) > 0).length;
+  const vol = world.reduce((n, c) => n + (Number(c.volume24h) || 0), 0);
+  const holders = world.reduce((n, c) => n + (Number(c.holders) || 0), 0);
+  const pairs = new Set(world.map((c) => c.pair).filter(Boolean));
   const movers = tape
     .filter((c) => Number.isFinite(Number(c.change24h)) && Number(c.marketCap) >= MOVER_FLOOR)
     .sort((a, b) => Number(b.change24h) - Number(a.change24h))
     .slice(0, 3)
     .map(lite);
-  const locked = tape.filter((c) => Number(c.stockLockedUsd) > 0).sort((a, b) => Number(b.stockLockedUsd) - Number(a.stockLockedUsd)).slice(0, 3).map(lite);
+  const locked = world.filter((c) => Number(c.stockLockedUsd) > 0).sort((a, b) => Number(b.stockLockedUsd) - Number(a.stockLockedUsd)).slice(0, 3).map(lite);
   return {
     stockLockedUsd: lockedUsd,
     stockLockedKnown: lockedKnown,
-    coinsListed: tape.length,
-    launches: (uni && uni.coins && uni.coins.length) || tape.length,
-    equitiesPaired: (uni && uni.equitiesPaired) || pairs.size,
+    coinsListed: world.length,
+    launches: (uni && uni.coins && uni.coins.length) || world.length,
+    equitiesPaired: pairs.size,
     volume24h: vol,
     holders: holders,
     movers: movers,
@@ -140,11 +140,11 @@ export default async function handler(req, res) {
     if (!map[PIN]) map[PIN] = { ticker: "MEME", name: "A Meme Coin", address: PIN, pair: "AMC", launchpad: "long", listed: true };
     if (!map[PIN_GG]) map[PIN_GG] = { ticker: "GG", name: "Golden Goose", address: PIN_GG, pair: "GLD", launchpad: "pons", listed: true };
     if (!map[PIN_BONER]) map[PIN_BONER] = { ticker: "BONER", name: "Boner Coin", address: PIN_BONER, pair: "HIMS", launchpad: "long", listed: true };
-    const raw = Object.values(map).filter((c) => !looksScam(c));
-    raw.sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
-    await fillDex(raw.slice(0, 80), 80);
-    const tape = raw.filter(onTape).sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
-    await fillHolders(tape.slice(0, 40), 16);
+    const world = Object.values(map).filter((c) => !looksScam(c));
+    world.sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
+    await fillDex(world.slice(0, 200), 80);
+    const tape = world.filter(onTape).sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
+    await fillHolders(world.slice(0, 80), 20);
     await fillPads(tape.slice(0, 40), 40);
     tape.forEach((c, i) => { c.rank = i + 1; });
     const metals = tape.filter((c) => c.pair === "GLD" || c.pair === "SLV");
@@ -157,7 +157,7 @@ export default async function handler(req, res) {
       } catch (e) {}
     }));
     const onchain = (uni && uni.onchain) || {};
-    const util = await wrapperUtil(tape, onchain);
+    const util = await wrapperUtil(world, onchain);
     const head = await latestBlock();
     res.status(200).json({
       generated: uni && uni.generated,
@@ -166,11 +166,12 @@ export default async function handler(req, res) {
       aggregates: {
         coins: tape.length,
         listed: tape.length,
-        launches: (uni && uni.coins && uni.coins.length) || tape.length,
+        tracked: world.length,
+        launches: (uni && uni.coins && uni.coins.length) || world.length,
         metals: metals.length,
-        volume24h: tape.reduce((n, c) => n + (Number(c.volume24h) || 0), 0)
+        volume24h: world.reduce((n, c) => n + (Number(c.volume24h) || 0), 0)
       },
-      snapshot: buildSnapshot(uni, tape, util, head),
+      snapshot: buildSnapshot(uni, world, tape, util, head),
       quotes,
       onchain,
       logos: buildLogos((uni && uni.logos) || {}),
