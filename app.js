@@ -1,13 +1,12 @@
 const HOLIDAYS = new Set(["2026-09-07", "2026-11-26", "2026-12-25"]);
-const PADS = { long: ["long", "long.xyz"], bankr: ["bankr"], feel: ["feel", "feel.cash"], flap: ["flap"] };
 
 function fmtPx(n) {
   const x = Number(n);
   if (!Number.isFinite(x)) return "—";
-  if (x >= 100) return x.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  if (x >= 100) return "$" + x.toLocaleString("en-US", { maximumFractionDigits: 2 });
   if (x >= 1) return "$" + x.toFixed(2);
   if (x >= 0.01) return "$" + x.toFixed(5);
-  if (x > 0) return "$" + x.toFixed(8).replace(/0+$/, "").replace(/\.$/, "");
+  if (x > 0) return "$" + Number(x.toPrecision(4));
   return "—";
 }
 function fmtNum(n) {
@@ -57,33 +56,21 @@ function padGroup(raw) {
   if (s.includes("flap")) return "flap";
   return "other";
 }
-function nyParts(d) {
+function cashSession(d) {
   const fmt = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York", weekday: "short", hour: "2-digit", minute: "2-digit",
     hour12: false, year: "numeric", month: "2-digit", day: "2-digit"
   });
   const o = {};
   for (const p of fmt.formatToParts(d)) o[p.type] = p.value;
-  return o;
+  const iso = o.year + "-" + o.month + "-" + o.day;
+  const minutes = Number(o.hour) * 60 + Number(o.minute);
+  if (o.weekday === "Sat" || o.weekday === "Sun") return "WEEKEND · no mint";
+  if (iso === "2026-09-07") return "CLOSED · Labor Day · no mint";
+  if (minutes < 570) return "PRE-OPEN · cash last";
+  if (minutes >= 960) return "AFTER HOURS · no mint";
+  return "OPEN";
 }
-function cashSession(d) {
-  const p = nyParts(d);
-  const iso = p.year + "-" + p.month + "-" + p.day;
-  const wd = p.weekday;
-  const minutes = Number(p.hour) * 60 + Number(p.minute);
-  const holiday = HOLIDAYS.has(iso);
-  const weekend = wd === "Sat" || wd === "Sun";
-  if (weekend) return { open: false, reason: "WEEKEND · no mint" };
-  if (holiday) return { open: false, reason: iso === "2026-09-07" ? "CLOSED · Labor Day · no mint" : "CLOSED · holiday · no mint" };
-  if (minutes < 570) return { open: false, reason: "PRE-OPEN · cash last" };
-  if (minutes >= 960) return { open: false, reason: "AFTER HOURS · no mint" };
-  return { open: true, reason: "OPEN" };
-}
-
-let TAB = "top";
-let PAD = "all";
-let CACHE = null;
-
 function premium(onchainPx, cashPx) {
   if (!Number.isFinite(onchainPx) || !Number.isFinite(cashPx) || cashPx <= 0) return NaN;
   return ((onchainPx / cashPx) - 1) * 100;
@@ -91,11 +78,32 @@ function premium(onchainPx, cashPx) {
 function matchesQuery(c, q) {
   if (!q) return true;
   const needle = q.toLowerCase();
-  const addr = String(c.address || "").toLowerCase();
-  const pool = String(c.poolId || "").toLowerCase();
-  if (addr.includes(needle) || pool.includes(needle)) return true;
+  if (String(c.address || "").toLowerCase().includes(needle)) return true;
+  if (String(c.poolId || "").toLowerCase().includes(needle)) return true;
   const u = q.toUpperCase();
   return (c.ticker || "").toUpperCase().includes(u) || (c.pair || "").toUpperCase().includes(u) || (c.name || "").toUpperCase().includes(u);
+}
+
+let TAB = "top";
+let PAD = "all";
+let CACHE = null;
+let LIVE = {};
+let ticking = false;
+
+function rowCoin(c) {
+  const live = LIVE[String(c.poolId || "").toLowerCase()];
+  if (!live) return c;
+  const out = Object.assign({}, c);
+  if (live.priceUsd) out.price = Number(live.priceUsd);
+  if (live.marketCap || live.fdv) out.marketCap = Number(live.marketCap || live.fdv);
+  if (live.volume && live.volume.h24 != null) out.volume24h = Number(live.volume.h24);
+  if (live.priceChange && live.priceChange.h24 != null) out.change24h = Number(live.priceChange.h24);
+  const meme = Number(live.priceUsd);
+  const native = Number(live.priceNative);
+  if (Number.isFinite(meme) && Number.isFinite(native) && native > 0) {
+    out._wrap = meme / native;
+  }
+  return out;
 }
 
 function renderRows(list) {
@@ -108,23 +116,25 @@ function renderRows(list) {
   });
   const rows = document.getElementById("rows");
   const looksAddr = /^0x[a-fA-F0-9]{40}$/.test(raw);
-  rows.innerHTML = filtered.map((c, i) => {
+  rows.innerHTML = filtered.map((base, i) => {
+    const c = rowCoin(base);
     const chg = fmtChg(c.change24h);
-    const wrap = onchain[c.pair];
+    const wrap = c._wrap != null ? c._wrap : onchain[c.pair];
     const cash = quotes[c.pair];
     const pr = fmtPrem(premium(wrap, cash));
     const href = c.address ? "/p/" + c.address : "";
     const logo = c.address ? "https://memefimarketcap.com/assets/logos/coin/" + c.address + ".webp" : "/memefi.png";
-    return `<tr data-href="${href}">
+    const flag = c.flagged ? `<small class="flag">flagged</small>` : `<small>${padLabel(c.launchpad)}</small>`;
+    return `<tr data-href="${href}" data-pool="${c.poolId || ""}">
       <td class="num">${c.rank || i + 1}</td>
       <td>
         <a class="pair namecell" href="${href}">
           <img src="${logo}" alt="" onerror="this.src='/memefi.png'"/>
-          <span class="nm"><strong>${c.name || c.ticker} <span>${c.ticker}</span></strong><small>${padLabel(c.launchpad)}</small></span>
+          <span class="nm"><strong>${c.name || c.ticker} <span>${c.ticker}</span></strong>${flag}</span>
         </a>
       </td>
-      <td><div class="stock"><b>${c.pair || "—"}</b><em>${wrap != null ? fmtPx(wrap).replace(/^\$/, "$") : (cash != null ? fmtPx(cash) : "—")}</em></div></td>
-      <td class="px">${c.price != null ? (Number(c.price) >= 1 ? "$" + Number(c.price).toFixed(2) : fmtPx(c.price)) : "—"}</td>
+      <td><div class="stock"><b>${c.pair || "—"}</b><em>${wrap != null ? fmtPx(wrap) : "—"}</em></div></td>
+      <td class="px">${fmtPx(c.price)}</td>
       <td class="${chg.cls}">${chg.text}</td>
       <td class="mcap">${fmtUsd(c.marketCap)}</td>
       <td class="vol">${fmtUsd(c.volume24h)}</td>
@@ -135,33 +145,39 @@ function renderRows(list) {
   }).join("") || `<tr><td colspan="10">${looksAddr ? `Open file: <a class="pair" href="/p/${raw.toLowerCase()}">${raw.toLowerCase()}</a>` : "No matches"}</td></tr>`;
 }
 
+function visibleList() {
+  if (!CACHE) return [];
+  return TAB === "new" ? (CACHE.newest || []) : (CACHE.top || []);
+}
+
 function paint() {
   if (!CACHE) return;
-  const session = cashSession(new Date());
+  const reason = cashSession(new Date());
   const stamp = document.getElementById("live-stamp");
-  if (stamp) stamp.textContent = session.reason;
+  if (stamp) stamp.textContent = reason + " · live 1s";
   const sessEl = document.getElementById("session");
-  if (sessEl) sessEl.textContent = session.reason;
+  if (sessEl) sessEl.textContent = reason;
   const agg = CACHE.aggregates || {};
   const snap = document.getElementById("snap");
   if (snap) {
     const listed = agg.listed || agg.coins || "—";
     const launches = agg.launches ? Number(agg.launches).toLocaleString("en-US") : "—";
-    snap.textContent = Number(listed).toLocaleString("en-US") + " listed of " + launches + " launches · " + (agg.equities || "—") + " equities · " + fmtUsd(agg.stockLockedUsd) + " stock locked · vol " + fmtUsd(agg.volume24h);
+    snap.textContent = Number(listed).toLocaleString("en-US") + " listed of " + launches + " launches · DexScreener tick 1s on visible rows";
   }
-  renderRows(TAB === "new" ? (CACHE.newest || []) : (CACHE.top || []));
-
-  const focus = (CACHE.top || []).find((c) => c.ticker === "MEME" && c.pair === "AMC") || (CACHE.top || []).find((c) => c.ticker === "AI") || (CACHE.top || [])[0];
+  renderRows(visibleList());
+  const focus = (CACHE.top || []).find((c) => String(c.address || "").toLowerCase() === "0x385f4f8ae47651ce5f58f5265395a669f8281e18") ||
+    (CACHE.top || []).find((c) => c.ticker === "AI") || (CACHE.top || [])[0];
   if (focus) {
+    const c = rowCoin(focus);
     const el = document.getElementById("px");
-    if (el) el.textContent = fmtPx(focus.price).replace(/^\$/, "");
-    const chg = fmtChg(focus.change24h);
+    if (el) el.textContent = fmtPx(c.price).replace(/^\$/, "");
+    const chg = fmtChg(c.change24h);
     const s = document.getElementById("pxchg");
     if (s) { s.textContent = chg.text; s.className = chg.cls; }
-    const wrap = CACHE.onchain[focus.pair];
+    const wrap = c._wrap != null ? c._wrap : CACHE.onchain[c.pair];
     const under = document.getElementById("under");
     if (under && wrap != null) under.textContent = fmtPx(wrap).replace(/^\$/, "");
-    const cash = CACHE.quotes[focus.pair];
+    const cash = CACHE.quotes[c.pair];
     const premEl = document.getElementById("prem");
     if (premEl) {
       const pr = fmtPrem(premium(wrap, cash));
@@ -169,11 +185,32 @@ function paint() {
       premEl.className = pr.cls;
     }
     const lab = document.getElementById("focus-lab");
-    if (lab) lab.textContent = focus.ticker;
+    if (lab) lab.textContent = c.ticker;
     const ulab = document.getElementById("under-lab");
-    if (ulab) ulab.textContent = (focus.pair || "") + " on-chain";
+    if (ulab) ulab.textContent = (c.pair || "") + " on-chain";
     const plab = document.getElementById("prem-lab");
-    if (plab) plab.textContent = (focus.pair || "") + " premium";
+    if (plab) plab.textContent = (c.pair || "") + " premium";
+  }
+}
+
+async function tickLive() {
+  if (ticking || !CACHE) return;
+  const rows = Array.from(document.querySelectorAll("tr[data-pool]")).slice(0, 20);
+  const ids = rows.map((r) => r.getAttribute("data-pool")).filter((id) => id && id.length > 10);
+  if (!ids.length) return;
+  ticking = true;
+  try {
+    const r = await fetch("/api/pairs?ids=" + encodeURIComponent(ids.join(",")));
+    if (!r.ok) return;
+    const data = await r.json();
+    const list = data.pairs || (data.pair ? [data.pair] : []);
+    for (const p of list) {
+      if (p && p.pairAddress) LIVE[p.pairAddress.toLowerCase()] = p;
+    }
+    paint();
+  } catch (e) {
+  } finally {
+    ticking = false;
   }
 }
 
@@ -211,4 +248,5 @@ document.addEventListener("input", (e) => {
 });
 
 refresh();
-setInterval(refresh, 90000);
+setInterval(refresh, 60000);
+setInterval(tickLive, 1000);
