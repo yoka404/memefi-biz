@@ -1,11 +1,13 @@
 function pfp(c) {
+  const addr = String(c.address || "").toLowerCase();
   const out = [];
-  if (c.logo) out.push("https://memefimarketcap.com/" + String(c.logo).replace(/^\//, ""));
-  else if (c.address) out.push("https://memefimarketcap.com/assets/logos/coin/" + c.address + ".webp");
+  if (c.dexImage) out.push(c.dexImage);
+  if (addr) out.push("https://dd.dexscreener.com/ds-data/tokens/robinhood/" + addr + ".png");
   if (c.imageUri) {
     const u = String(c.imageUri);
     out.push(u.indexOf("ipfs://") === 0 ? "https://ipfs.io/ipfs/" + u.slice(7) : u);
   }
+  if (c.logo) out.push("https://memefimarketcap.com/" + String(c.logo).replace(/^\//, ""));
   return out.filter(Boolean);
 }
 function fmtPx(n) {
@@ -106,6 +108,7 @@ function rowCoin(c) {
   if (live.marketCap || live.fdv) out.marketCap = Number(live.marketCap || live.fdv);
   if (live.volume && live.volume.h24 != null) out.volume24h = Number(live.volume.h24);
   if (live.priceChange && live.priceChange.h24 != null) out.change24h = Number(live.priceChange.h24);
+  if (live.info && live.info.imageUrl) out.dexImage = live.info.imageUrl;
   const meme = Number(live.priceUsd);
   const native = Number(live.priceNative);
   if (Number.isFinite(meme) && Number.isFinite(native) && native > 0) out._wrap = meme / native;
@@ -130,7 +133,7 @@ function renderRows(list) {
     const pr = fmtPrem(premium(wrap, cash));
     const href = c.address ? "/p/" + c.address : "";
     const imgs = pfp(c);
-    const flag = c.flagged ? `<small class="flag">flagged</small>` : `<small>${padLabel(c.launchpad)}</small>`;
+    const flag = c.flagged ? `<small class="flag" data-tip="Excluded from the reference rank. Pool math looks impossible.">flagged</small>` : `<small>${padLabel(c.launchpad)}</small>`;
     return `<tr data-href="${href}" data-pool="${c.poolId || ""}">
       <td class="num">${c.rank || i + 1}</td>
       <td>
@@ -161,7 +164,10 @@ function paint() {
   if (!CACHE) return;
   const reason = cashSession(new Date());
   const stamp = document.getElementById("live-stamp");
-  if (stamp) stamp.textContent = reason + " · live 1s";
+  if (stamp) {
+    stamp.textContent = reason + " · live 1s";
+    stamp.setAttribute("data-tip", "NYSE cash session. Tokenized stocks and metals cannot mint or redeem while cash is closed.");
+  }
   const sessEl = document.getElementById("session");
   if (sessEl) sessEl.textContent = reason;
   const agg = CACHE.aggregates || {};
@@ -169,7 +175,7 @@ function paint() {
   if (snap) {
     const listed = agg.listed || agg.coins || "—";
     const launches = agg.launches ? Number(agg.launches).toLocaleString("en-US") : "—";
-    snap.textContent = Number(listed).toLocaleString("en-US") + " listed of " + launches + " launches · metals GLD/SLV on filter";
+    snap.textContent = Number(listed).toLocaleString("en-US") + " listed of " + launches + " launches · DexScreener logos";
   }
   renderRows(visibleList());
   const focus = (CACHE.metals || []).find((c) => String(c.address || "").toLowerCase() === "0xcacb0e9caccee63ec4d82952e561a291c68bcb68") ||
@@ -197,7 +203,10 @@ function paint() {
     const ulab = document.getElementById("under-lab");
     if (ulab) ulab.textContent = (c.pair || "") + " on-chain";
     const plab = document.getElementById("prem-lab");
-    if (plab) plab.textContent = (c.pair || "") + " premium";
+    if (plab) {
+      plab.textContent = (c.pair || "") + " premium";
+      plab.setAttribute("data-tip", "On-chain wrapper versus last NYSE cash print.");
+    }
   }
 }
 
