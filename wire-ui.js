@@ -12,7 +12,7 @@ function paintWire(items) {
   const track = document.getElementById("wire-track");
   const dots = document.getElementById("wire-dots");
   if (!track) return;
-  const list = (items || []).slice(0, 10);
+  const list = (items || []).slice(0, 20);
   if (!list.length) {
     track.innerHTML = '<article class="wire-card empty"><p>Wire is quiet.</p></article>';
     return;
@@ -88,4 +88,4 @@ setTimeout(() => {
   }, { passive: true });
 }, 0);
 loadCarousel();
-setInterval(loadCarousel, 180000);
+setInterval(loadCarousel, 120000);
