@@ -49,4 +49,12 @@ footer{text-transform:none;letter-spacing:.04em}
 }
 .stories a.read:hover{border-color:#8b6cff;color:#c4b5fd !important}
 .stories a.read .ico{font-size:13px;line-height:1}
-@media(max-width:720px){.chart-frame{height:360px}}
+.stock{display:flex;align-items:center;gap:8px}
+.stock span{display:flex;flex-direction:column;gap:1px;min-width:0}
+.stock-logo{width:18px;height:18px;border-radius:50%;object-fit:cover;background:#121217;flex:0 0 18px}
+@media(max-width:720px){
+  .chart-frame{height:360px}
+  .stock-logo{width:16px;height:16px;flex-basis:16px}
+  .filters{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
+  .nav nav{overflow-x:auto}
+}
