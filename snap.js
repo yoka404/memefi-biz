@@ -22,7 +22,7 @@ function chg(n) {
 }
 function row(c, right, sub) {
   const href = c.address ? "/p/" + encodeURIComponent(c.address) : "#";
-  return `<li><a href="${href}"><span><strong>${esc(c.name || c.ticker)}</strong> <em>${esc(c.ticker || "")} · ${esc(c.pair || "")}</em></span><span class="r"><b>${right}</b><small class="${sub.c || "mute"}">${sub.t || ""}</small></span></a></li>`;
+  return `<li><a href="${href}"><span><strong>${esc(c.name || c.ticker)}</strong> <em>${esc(c.ticker || "")} · ${esc(c.pair || "")}</em></span><span class="r"><b>${right}</b><small class="${sub.c || "mute"}">${esc(sub.t || "")}</small></span></a></li>`;
 }
 function paintSnapshot(s) {
   if (!s) return;
@@ -50,4 +50,14 @@ function paintSnapshot(s) {
     return row(c, money(c.stockLockedUsd), { t: units, c: "mute" });
   }).join("") || "<li class=\"mute\">No lock data</li>";
 }
-if (typeof window !== "undefined") window.paintSnapshot = paintSnapshot;
+async function bootSnap() {
+  try {
+    const r = await fetch("/api/board");
+    if (!r.ok) return;
+    const d = await r.json();
+    paintSnapshot(d.snapshot);
+  } catch (e) {}
+}
+window.paintSnapshot = paintSnapshot;
+bootSnap();
+setInterval(bootSnap, 60000);
