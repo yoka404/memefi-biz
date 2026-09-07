@@ -12,8 +12,8 @@
 <body>
 <header class="nav">
   <div class="brand"><img src="memefi.png" alt=""/>MEMEFI</div>
-  <nav><a class="on" href="#desk">Desk</a><a href="#wire">Wire</a><a href="#prices">Prices</a><a href="#token">Token</a></nav>
-  <div class="meta waiting" id="live-stamp">Reading tape</div>
+  <nav><a class="on" href="#desk">Desk</a><a href="#wire">Wire</a><a href="#prices">Board</a><a href="#token">Token</a></nav>
+  <div class="meta waiting" id="live-stamp" data-tip="NYSE cash session. Wrappers cannot mint or redeem while cash is closed.">Reading tape</div>
 </header>
 
 <section class="hero" id="desk">
@@ -24,8 +24,8 @@
     <p class="snap waiting" id="snap">Settling the universe</p>
     <div class="pills">
       <div><em id="focus-lab">MEME</em><b id="px" class="waiting">—</b><s id="pxchg"></s></div>
-      <div><em id="under-lab">AMC on-chain</em><b id="under" class="waiting">—</b></div>
-      <div><em id="prem-lab">AMC premium</em><b id="prem" class="waiting">—</b></div>
+      <div data-tip="Last on-chain price of the official stock or metal token."><em id="under-lab">AMC on-chain</em><b id="under" class="waiting">—</b></div>
+      <div data-tip="On-chain wrapper divided by the last NYSE cash print, minus one."><em id="prem-lab">AMC premium</em><b id="prem" class="waiting">—</b></div>
     </div>
   </div>
   <figure>
@@ -91,11 +91,11 @@
     </div>
     <div class="filters" id="pads">
       <button data-pad="all" class="on">All launchpads</button>
-      <button data-pad="long">long.xyz</button>
-      <button data-pad="bankr">Bankr</button>
-      <button data-pad="feel">feel.cash</button>
-      <button data-pad="flap">Flap</button>
-      <button data-pad="metals">Metals</button>
+      <button data-pad="long" data-tip="long.xyz launches routed through Doppler Airlock.">long.xyz</button>
+      <button data-pad="bankr" data-tip="Bankr launches on the same Airlock.">Bankr</button>
+      <button data-pad="feel" data-tip="feel.cash launches.">feel.cash</button>
+      <button data-pad="flap" data-tip="Flap launches.">Flap</button>
+      <button data-pad="metals" data-tip="Memes quoted in official GLD or SLV wrappers. Not copper: no CPER token exists on this chain.">Metals</button>
       <button data-pad="other">Other</button>
     </div>
     <div class="toolbar">
@@ -108,13 +108,13 @@
         <tr>
           <th class="num">#</th>
           <th>Name</th>
-          <th>Paired asset</th>
+          <th data-tip="Official tokenized stock or metal used as the quote asset.">Paired asset</th>
           <th>Price</th>
           <th>24h</th>
           <th>Market cap</th>
           <th>Volume 24h</th>
-          <th>Asset locked</th>
-          <th>Premium</th>
+          <th data-tip="How much of the stock or metal token sits in the liquidity pool.">Asset locked</th>
+          <th data-tip="On-chain wrapper price vs last NYSE cash print. Empty if the quote is not a listed equity or metal.">Premium</th>
           <th>Holders</th>
         </tr>
       </thead>
@@ -137,7 +137,7 @@
     <p>The desk token is not live. Board prints are on-chain. Cash closes are the last regular-session print. Premium is wrapper versus cash, including GLD and SLV.</p>
   </div>
 </section>
-<footer>memefi.biz · not financial advice · board figures from chain state · premium = wrapper / cash close</footer>
+<footer>memefi.biz · not financial advice · logos from DexScreener · premium = wrapper / cash close</footer>
 <script src="app.js"></script>
 </body>
 </html>
