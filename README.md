@@ -1,6 +1,6 @@
 # MEMEFI
 
-**The tape after the punchline.**
+**Who controls the memes controls the tape.**
 
 Desk for memecoins quoted in official Robinhood Chain stock tokens and metal ETFs. Live prices. Cash-session premium. Permanent pair files.
 
@@ -10,6 +10,8 @@ Desk account: [@memefibiz](https://x.com/memefibiz)
 ---
 
 ## TL;DR
+
+Who controls the memes controls the tape.
 
 On Robinhood Chain, a memecoin can be the base asset and a tokenized equity or metal (NVDA, AMC, GLD, SLV) the quote. The dollar print of the meme is a ratio against that wrapper. When NYSE is closed the wrapper can trade at a premium to the last cash print; every pair that uses it reprices. MEMEFI is the newsroom and the board for that tape.
 
