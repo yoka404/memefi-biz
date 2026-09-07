@@ -42,9 +42,16 @@
 <section class="wire-desk" id="wire">
   <div class="card-head">
     <h2>Wire</h2>
-    <span id="wire-tag">Aggregator</span>
+    <div class="wire-tools">
+      <span id="wire-tag">Aggregator</span>
+      <button type="button" id="wire-prev" aria-label="Previous">&#8249;</button>
+      <button type="button" id="wire-next" aria-label="Next">&#8250;</button>
+    </div>
   </div>
-  <ol class="stories" id="wire-list"></ol>
+  <div class="wire-port">
+    <div class="wire-track" id="wire-track"></div>
+  </div>
+  <div class="wire-dots" id="wire-dots"></div>
 </section>
 
 <section class="layout" id="snapshot">
@@ -135,5 +142,6 @@
 <p id="snap" hidden></p>
 <script src="snap.js?v=10"></script>
 <script src="app.js?v=9"></script>
+<script src="wire-ui.js?v=1"></script>
 </body>
 </html>
