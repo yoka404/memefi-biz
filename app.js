@@ -74,11 +74,18 @@ function padGroup(raw) {
   if (s.includes("bankr")) return "bankr";
   if (s.includes("feel")) return "feel";
   if (s.includes("flap")) return "flap";
+  if (s.includes("o1") || s.includes("swapx")) return "o1";
+  if (s.includes("pair")) return "pair";
   return "other";
 }
 function padLabel(raw) {
+  const s = String(raw || "").toLowerCase();
+  if (s.includes("pons-v3") || s.includes("ponsv3")) return "Pons V3";
+  if (s.includes("pons-v2") || s.includes("ponsv2")) return "Pons V2";
+  if (s.includes("pons-v1") || s.includes("ponsv1")) return "Pons V1";
+  if (s.includes("pons")) return "Pons";
   const g = padGroup(raw);
-  return { pons: "Pons", long: "long.xyz", bankr: "Bankr", feel: "feel.cash", flap: "Flap" }[g] || raw || "other";
+  return { long: "long.xyz", bankr: "Bankr", feel: "feel.cash", flap: "Flap", o1: "o1", pair: "PAIR" }[g] || raw || "other";
 }
 function padUrl(raw, address, ticker) {
   const a = String(address || "").toLowerCase();
@@ -90,22 +97,9 @@ function padUrl(raw, address, ticker) {
   if (g === "feel") return t ? "https://feel.cash/" + t : "https://feel.cash";
   if (g === "flap") return "https://flap.sh/robinhood/" + a;
   if (g === "pons") return "https://www.ponsfamily.com/launchpad/" + a;
+  if (g === "o1") return "https://launch.o1.exchange/token/" + a;
+  if (g === "pair") return "https://pair.fund/tokens/" + a;
   return "https://rh-scan.com/token/" + a;
-}
-function cashSession(d) {
-  const fmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York", weekday: "short", hour: "2-digit", minute: "2-digit",
-    hour12: false, year: "numeric", month: "2-digit", day: "2-digit"
-  });
-  const o = {};
-  for (const p of fmt.formatToParts(d)) o[p.type] = p.value;
-  const iso = o.year + "-" + o.month + "-" + o.day;
-  const minutes = Number(o.hour) * 60 + Number(o.minute);
-  if (o.weekday === "Sat" || o.weekday === "Sun") return "WEEKEND · no mint";
-  if (iso === "2026-09-07") return "CLOSED · Labor Day · no mint";
-  if (minutes < 570) return "PRE-OPEN · cash last";
-  if (minutes >= 960) return "AFTER HOURS · no mint";
-  return "OPEN";
 }
 function premium(onchainPx, cashPx) {
   if (!Number.isFinite(onchainPx) || !Number.isFinite(cashPx) || cashPx <= 0) return NaN;
@@ -222,15 +216,13 @@ function visibleList() {
 
 function paint() {
   if (!CACHE) return;
-  const reason = cashSession(new Date());
   const stamp = document.getElementById("live-stamp");
   const liveText = document.getElementById("live-text");
-  if (liveText) liveText.textContent = reason + " · live";
-  else if (stamp) stamp.textContent = reason + " · live";
+  if (liveText) liveText.textContent = "Live";
   goLive(stamp);
-  if (stamp) stamp.setAttribute("data-tip", "NYSE cash session. Tokenized stocks and metals cannot mint or redeem while cash is closed.");
+  if (stamp) stamp.removeAttribute("data-tip");
   const sessEl = document.getElementById("session");
-  if (sessEl) sessEl.textContent = reason;
+  if (sessEl) sessEl.textContent = "Stock-paired";
   const agg = CACHE.aggregates || {};
   const snap = document.getElementById("snap");
   if (snap) {
