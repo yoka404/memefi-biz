@@ -1,5 +1,6 @@
 export const config = { maxDuration: 30 };
 import { buildUniverse } from "../lib/indexer.js";
+import { fillHolders } from "../lib/blockscout.js";
 
 const YAHOO = ["AMC","NVDA","HIMS","MU","MSTR","TSLA","HOOD","AAPL","GME","SPY","MSFT","AMD","AMZN","META","GOOGL","NFLX","PLTR","INTC","BABA","COIN","RBLX","DJT","GLD","SLV","QQQ","IWM"];
 const PIN = "0x385f4f8ae47651ce5f58f5265395a669f8281e18".toLowerCase();
@@ -94,6 +95,7 @@ export default async function handler(req, res) {
     if (!map[PIN]) map[PIN] = { ticker: "MEME", name: "A Meme Coin", address: PIN, pair: "AMC", launchpad: "long", flagged: true, flag: "pinned" };
     if (!map[PIN_GG]) map[PIN_GG] = { ticker: "GG", name: "Golden Goose", address: PIN_GG, pair: "GLD", launchpad: "uniswap" };
     const coins = Object.values(map).sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
+    await fillHolders(coins.slice(0, 40), 12);
     coins.forEach((c, i) => { c.rank = i + 1; });
     const metals = coins.filter((c) => c.pair === "GLD" || c.pair === "SLV").sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
     const newest = coins.slice().sort((a, b) => String(b.createdAt || b.launchedAt || "").localeCompare(String(a.createdAt || a.launchedAt || ""))).slice(0, 80);
