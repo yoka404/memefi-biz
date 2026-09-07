@@ -93,7 +93,13 @@ async function main() {
     : "$" + c.ticker + " pool is quoted in " + (c.pair || "the paired asset") + ".";
   const stamp = document.getElementById("live-stamp");
   if (stamp) { stamp.classList.remove("waiting"); stamp.textContent = "Live pair"; }
-  setAvatar(document.getElementById("avatar"), [c.dexImage, c.logoDetail, c.logo, c.imageUri]);
+  setAvatar(document.getElementById("avatar"), [
+    c.dexImage,
+    "https://dd.dexscreener.com/ds-data/tokens/robinhood/" + c.address + ".png",
+    c.logoDetail,
+    c.logo,
+    c.imageUri
+  ]);
   if (c.banner) {
     const b = document.getElementById("banner");
     b.hidden = false;
@@ -122,9 +128,9 @@ async function main() {
     <div><em>Liquidity</em><b>${fmtUsd(c.liquidityUsd)}</b></div>`;
   if (equity) {
     pills += `
-    <div><em>${c.pair} on-chain</em><b>${wrap != null ? fmtPx(wrap) : "—"}</b></div>
-    <div><em>Cash close</em><b>${cash != null ? fmtPx(cash) : "—"}</b></div>
-    <div><em>Premium</em><b>${p == null ? "n/a" : ((p > 0 ? "+" : "") + p.toFixed(1) + "%")}</b></div>`;
+    <div data-tip="Last on-chain print of the official wrapper."><em>${c.pair} on-chain</em><b>${wrap != null ? fmtPx(wrap) : "—"}</b></div>
+    <div data-tip="Last regular-session print on NYSE. Frozen on weekends and holidays."><em>Cash close</em><b>${cash != null ? fmtPx(cash) : "—"}</b></div>
+    <div data-tip="Wrapper / cash close − 1. Empty if the quote is not an official stock or metal."><em>Premium</em><b>${p == null ? "n/a" : ((p > 0 ? "+" : "") + p.toFixed(1) + "%")}</b></div>`;
   } else {
     pills += `<div><em>1h</em><b class="${Number(c.change1h) >= 0 ? "up" : "dn"}">${fmtChg(c.change1h)}</b></div>`;
   }
