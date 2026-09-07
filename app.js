@@ -65,15 +65,23 @@ function premium(onchainPx, cashPx) {
   return ((onchainPx / cashPx) - 1) * 100;
 }
 
+function matchesQuery(c, q) {
+  if (!q) return true;
+  const addr = String(c.address || "").toLowerCase();
+  const pool = String(c.poolId || "").toLowerCase();
+  const needle = q.toLowerCase();
+  if (addr.includes(needle) || pool.includes(needle)) return true;
+  const u = q.toUpperCase();
+  return (c.ticker || "").toUpperCase().includes(u) || (c.pair || "").toUpperCase().includes(u) || (c.name || "").toUpperCase().includes(u);
+}
+
 function renderRows(list) {
-  const q = (document.getElementById("q") && document.getElementById("q").value || "").trim().toUpperCase();
+  const raw = (document.getElementById("q") && document.getElementById("q").value || "").trim();
   const quotes = (CACHE && CACHE.quotes) || {};
   const onchain = (CACHE && CACHE.onchain) || {};
-  const filtered = list.filter((c) => {
-    if (!q) return true;
-    return (c.ticker || "").toUpperCase().includes(q) || (c.pair || "").toUpperCase().includes(q) || (c.name || "").toUpperCase().includes(q);
-  });
+  const filtered = list.filter((c) => matchesQuery(c, raw));
   const rows = document.getElementById("rows");
+  const looksAddr = /^0x[a-fA-F0-9]{6,}$/.test(raw);
   rows.innerHTML = filtered.map((c) => {
     const chg = fmtChg(c.change24h);
     const wrap = onchain[c.pair];
@@ -93,7 +101,7 @@ function renderRows(list) {
       <td>${fmtUsd(c.stockLockedUsd)}</td>
       <td>${fmtUsd(c.volume24h)}</td>
     </tr>`;
-  }).join("") || `<tr><td colspan="10">No matches</td></tr>`;
+  }).join("") || `<tr><td colspan="10">${looksAddr && /^0x[a-fA-F0-9]{40}$/.test(raw) ? `No row in this tab. Open file: <a class="pair" href="/p/${raw.toLowerCase()}">${raw.toLowerCase()}</a>` : "No matches"}</td></tr>`;
 }
 
 function paint() {
