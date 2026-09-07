@@ -28,16 +28,18 @@ function pct(n) {
   if (x >= 1) return x.toFixed(2) + '%';
   return x.toFixed(3) + '%';
 }
-function ageOf(iso) {
+function lastUpdate(iso) {
   const t = Date.parse(iso || '');
   const start = Number.isFinite(t) ? t : window.__SNAP_AT;
-  if (!start) return 'live';
-  const m = Math.max(0, Math.round((Date.now() - start) / 60000));
-  if (m < 1) return 'fresh';
-  if (m === 1) return '1m stale';
-  if (m < 60) return m + 'm stale';
-  const h = Math.round(m / 60);
-  return h + (h === 1 ? 'h stale' : 'h stale');
+  if (!start) return 'updating';
+  const d = new Date(start);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const mins = Math.max(0, Math.round((Date.now() - start) / 60000));
+  if (mins < 1) return 'updated ' + hh + ':' + mm;
+  if (mins === 1) return 'updated ' + hh + ':' + mm + ' \u00b7 1m ago';
+  if (mins < 60) return 'updated ' + hh + ':' + mm + ' \u00b7 ' + mins + 'm ago';
+  return 'updated ' + hh + ':' + mm;
 }
 function chg(n) {
   const x = Number(n);
@@ -110,11 +112,10 @@ function paintSnapshot(s) {
   set('kpi-vol-sub', bits.join(' / ') || '24h');
   const blk = document.getElementById('snap-block');
   if (blk) {
-    const head = s.headBlock ? num(s.headBlock) : null;
-    const age = ageOf(s.generated);
-    const label = head ? ('Head ' + head + ' \u00b7 ' + age) : age;
+    const head = s.headBlock ? ('Block ' + num(s.headBlock)) : 'Block';
+    const label = head + ' \u00b7 ' + lastUpdate(s.generated);
     blk.innerHTML = '<i class="led" aria-hidden="true"></i><span>' + label + '</span>';
-    blk.setAttribute('data-tip', 'Robinhood Chain height at last refresh. Stale is how old this snapshot is.');
+    blk.setAttribute('data-tip', 'Robinhood Chain height and clock time of the last snapshot refresh.');
   }
   paintUtil(s.util);
   const movers = document.getElementById('snap-movers');
@@ -148,12 +149,3 @@ window.paintSnapshot = paintSnapshot;
 window.imgErr = imgErr;
 bootSnap();
 setInterval(bootSnap, 60000);
-setInterval(function () {
-  const blk = document.getElementById('snap-block');
-  if (!blk || !blk.querySelector('span')) return;
-  const span = blk.querySelector('span');
-  const txt = span.textContent || '';
-  const head = txt.split('\u00b7')[0].trim();
-  if (!head) return;
-  span.textContent = head + ' \u00b7 ' + ageOf();
-}, 30000);
