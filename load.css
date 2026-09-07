@@ -52,6 +52,8 @@ footer{text-transform:none;letter-spacing:.04em}
 .stock{display:flex;align-items:center;gap:8px}
 .stock span{display:flex;flex-direction:column;gap:1px;min-width:0}
 .stock-logo{width:18px;height:18px;border-radius:50%;object-fit:cover;background:#121217;flex:0 0 18px}
+.padlink{color:#a1a1aa;text-decoration:none;font-size:11px}
+.padlink:hover{color:#8b6cff;text-decoration:underline}
 @media(max-width:720px){
   .chart-frame{height:360px}
   .stock-logo{width:16px;height:16px;flex-basis:16px}
