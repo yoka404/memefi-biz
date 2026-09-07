@@ -9,8 +9,10 @@ const YAHOO = ["AMC","NVDA","HIMS","MU","MSTR","TSLA","HOOD","AAPL","GME","SPY",
 const PIN = "0x385f4f8ae47651ce5f58f5265395a669f8281e18".toLowerCase();
 const PIN_GG = "0xcacb0e9caccee63ec4d82952e561a291c68bcb68".toLowerCase();
 const PIN_BONER = "0x98096d17e191b3da1d5f99a6d7b3584351b11e18".toLowerCase();
+const PINS = new Set([PIN, PIN_GG, PIN_BONER]);
 const JUNK = /^(test|asdf|qwer|xxxx|zzzz|aaaa|abcd|foo|bar|xxx)/i;
 const TRUSTED = new Set(["long", "bankr", "feel", "flap", "pons"]);
+const TAPE_FLOOR = 1e5;
 const MOVER_FLOOR = 3e6;
 
 async function yahoo(symbol) {
@@ -24,7 +26,7 @@ async function yahoo(symbol) {
 
 function looksScam(c) {
   if (!c) return true;
-  if (c.address === PIN || c.address === PIN_GG || c.address === PIN_BONER) return false;
+  if (PINS.has(c.address)) return false;
   const tick = String(c.ticker || "");
   const name = String(c.name || "").replace(/\s+/g, "");
   if (JUNK.test(tick) || JUNK.test(name)) return true;
@@ -37,10 +39,10 @@ function looksScam(c) {
   return false;
 }
 
-function isTrusted(c) {
+function onTape(c) {
   if (!c) return false;
-  if (c.address === PIN || c.address === PIN_GG || c.address === PIN_BONER) return true;
-  return TRUSTED.has(padGroup(c.launchpad));
+  if (PINS.has(c.address)) return true;
+  return Number(c.marketCap) >= TAPE_FLOOR;
 }
 
 function buildLogos(rh) {
@@ -71,23 +73,23 @@ function lite(c) {
   };
 }
 
-function buildSnapshot(uni, trusted) {
-  const lockedUsd = trusted.reduce((n, c) => n + (Number(c.stockLockedUsd) || 0), 0);
-  const lockedKnown = trusted.filter((c) => Number(c.stockLockedUsd) > 0).length;
-  const vol = trusted.reduce((n, c) => n + (Number(c.volume24h) || 0), 0);
-  const holders = trusted.reduce((n, c) => n + (Number(c.holders) || 0), 0);
-  const pairs = new Set(trusted.map((c) => c.pair).filter(Boolean));
-  const movers = trusted
+function buildSnapshot(uni, tape) {
+  const lockedUsd = tape.reduce((n, c) => n + (Number(c.stockLockedUsd) || 0), 0);
+  const lockedKnown = tape.filter((c) => Number(c.stockLockedUsd) > 0).length;
+  const vol = tape.reduce((n, c) => n + (Number(c.volume24h) || 0), 0);
+  const holders = tape.reduce((n, c) => n + (Number(c.holders) || 0), 0);
+  const pairs = new Set(tape.map((c) => c.pair).filter(Boolean));
+  const movers = tape
     .filter((c) => Number.isFinite(Number(c.change24h)) && Number(c.marketCap) >= MOVER_FLOOR)
     .sort((a, b) => Number(b.change24h) - Number(a.change24h))
     .slice(0, 3)
     .map(lite);
-  const locked = trusted.filter((c) => Number(c.stockLockedUsd) > 0).sort((a, b) => Number(b.stockLockedUsd) - Number(a.stockLockedUsd)).slice(0, 3).map(lite);
+  const locked = tape.filter((c) => Number(c.stockLockedUsd) > 0).sort((a, b) => Number(b.stockLockedUsd) - Number(a.stockLockedUsd)).slice(0, 3).map(lite);
   return {
     stockLockedUsd: lockedUsd,
     stockLockedKnown: lockedKnown,
-    coinsListed: trusted.length,
-    launches: (uni && uni.coins && uni.coins.length) || trusted.length,
+    coinsListed: tape.length,
+    launches: (uni && uni.coins && uni.coins.length) || tape.length,
     equitiesPaired: (uni && uni.equitiesPaired) || pairs.size,
     volume24h: vol,
     holders: holders,
@@ -110,14 +112,14 @@ export default async function handler(req, res) {
     if (!map[PIN_GG]) map[PIN_GG] = { ticker: "GG", name: "Golden Goose", address: PIN_GG, pair: "GLD", launchpad: "uniswap", listed: true };
     if (!map[PIN_BONER]) map[PIN_BONER] = { ticker: "BONER", name: "Boner Coin", address: PIN_BONER, pair: "HIMS", launchpad: "long", listed: true };
     const raw = Object.values(map).filter((c) => !looksScam(c));
-    const trusted = raw.filter(isTrusted).sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
-    await fillDex(trusted.slice(0, 40), 40);
-    trusted.sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
-    await fillHolders(trusted.slice(0, 40), 16);
-    await fillPads(trusted.slice(0, 24), 16);
-    trusted.forEach((c, i) => { c.rank = i + 1; });
-    const metals = trusted.filter((c) => c.pair === "GLD" || c.pair === "SLV");
-    const newest = trusted.slice().sort((a, b) => String(b.createdAt || b.launchedAt || "").localeCompare(String(a.createdAt || a.launchedAt || ""))).slice(0, 80);
+    raw.sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
+    await fillDex(raw.slice(0, 80), 80);
+    const tape = raw.filter(onTape).sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
+    await fillHolders(tape.slice(0, 40), 16);
+    await fillPads(tape.slice(0, 24), 16);
+    tape.forEach((c, i) => { c.rank = i + 1; });
+    const metals = tape.filter((c) => c.pair === "GLD" || c.pair === "SLV");
+    const newest = tape.slice().sort((a, b) => String(b.createdAt || b.launchedAt || "").localeCompare(String(a.createdAt || a.launchedAt || ""))).slice(0, 80);
     const quotes = {};
     await Promise.all(YAHOO.map(async (s) => {
       try {
@@ -130,17 +132,17 @@ export default async function handler(req, res) {
       source: "memefi-indexer+dex",
       wrappers: uni && uni.wrappers,
       aggregates: {
-        coins: trusted.length,
-        listed: trusted.length,
-        launches: (uni && uni.coins && uni.coins.length) || trusted.length,
+        coins: tape.length,
+        listed: tape.length,
+        launches: (uni && uni.coins && uni.coins.length) || tape.length,
         metals: metals.length,
-        volume24h: trusted.reduce((n, c) => n + (Number(c.volume24h) || 0), 0)
+        volume24h: tape.reduce((n, c) => n + (Number(c.volume24h) || 0), 0)
       },
-      snapshot: buildSnapshot(uni, trusted),
+      snapshot: buildSnapshot(uni, tape),
       quotes,
       onchain: (uni && uni.onchain) || {},
       logos: buildLogos((uni && uni.logos) || {}),
-      top: trusted.slice(0, 250),
+      top: tape,
       newest,
       metals,
       flagged: []
