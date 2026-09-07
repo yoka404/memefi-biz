@@ -137,14 +137,14 @@ export default async function handler(req, res) {
       map[addr] = Object.assign({}, c, { address: addr, listed: true });
     }
     if (!map[PIN]) map[PIN] = { ticker: "MEME", name: "A Meme Coin", address: PIN, pair: "AMC", launchpad: "long", listed: true };
-    if (!map[PIN_GG]) map[PIN_GG] = { ticker: "GG", name: "Golden Goose", address: PIN_GG, pair: "GLD", launchpad: "uniswap", listed: true };
+    if (!map[PIN_GG]) map[PIN_GG] = { ticker: "GG", name: "Golden Goose", address: PIN_GG, pair: "GLD", launchpad: "pons", listed: true };
     if (!map[PIN_BONER]) map[PIN_BONER] = { ticker: "BONER", name: "Boner Coin", address: PIN_BONER, pair: "HIMS", launchpad: "long", listed: true };
     const raw = Object.values(map).filter((c) => !looksScam(c));
     raw.sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
     await fillDex(raw.slice(0, 80), 80);
     const tape = raw.filter(onTape).sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
     await fillHolders(tape.slice(0, 40), 16);
-    await fillPads(tape.slice(0, 24), 16);
+    await fillPads(tape.slice(0, 40), 40);
     tape.forEach((c, i) => { c.rank = i + 1; });
     const metals = tape.filter((c) => c.pair === "GLD" || c.pair === "SLV");
     const newest = tape.slice().sort((a, b) => String(b.createdAt || b.launchedAt || "").localeCompare(String(a.createdAt || a.launchedAt || ""))).slice(0, 80);
