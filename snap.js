@@ -12,13 +12,6 @@ function money(n) {
   if (Math.abs(x) >= 1e3) return '$' + (x / 1e3).toFixed(1) + 'K';
   return '$' + x.toFixed(0);
 }
-function px(n) {
-  const x = Number(n);
-  if (!Number.isFinite(x) || x <= 0) return '-';
-  if (x >= 1) return '$' + x.toFixed(2);
-  if (x >= 0.01) return '$' + x.toFixed(5);
-  return '$' + Number(x.toPrecision(4));
-}
 function num(n) {
   const x = Number(n);
   return Number.isFinite(x) ? x.toLocaleString('en-US') : '-';
@@ -71,7 +64,7 @@ function paintSnapshot(s) {
   if (blk) blk.textContent = s.headBlock ? 'block ' + num(s.headBlock) : 'on-chain';
   const movers = document.getElementById('snap-movers');
   if (movers) {
-    const html = (s.movers || []).map(function (c) { return row(c, px(c.price), chg(c.change24h)); }).join('');
+    const html = (s.movers || []).map(function (c) { return row(c, money(c.marketCap), chg(c.change24h)); }).join('');
     movers.innerHTML = html || '<li class="mute">No movers</li>';
   }
   const locked = document.getElementById('snap-locked');
