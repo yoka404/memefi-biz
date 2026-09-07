@@ -1,7 +1,7 @@
 export const config = { maxDuration: 30 };
+import { buildUniverse } from "../lib/indexer.js";
 
 const YAHOO = ["AMC","NVDA","HIMS","MU","MSTR","TSLA","HOOD","AAPL","GME","SPY","MSFT","AMD","AMZN","META","GOOGL","NFLX","PLTR","INTC","BABA","COIN","RBLX","DJT","GLD","SLV","QQQ","IWM"];
-const METALS = new Set(["GLD","SLV"]);
 const PIN = "0x385f4f8ae47651ce5f58f5265395a669f8281e18".toLowerCase();
 const PIN_GG = "0xcacb0e9caccee63ec4d82952e561a291c68bcb68".toLowerCase();
 
@@ -14,14 +14,13 @@ async function yahoo(symbol) {
   return Number.isFinite(Number(px)) ? Number(px) : null;
 }
 
-function slim(c, rank, extra) {
+function slimDump(c, extra) {
   const rep = c.reported || {};
   return Object.assign({
-    rank: rank || c.rank || null,
     ticker: c.ticker,
     name: c.name,
     launchpad: c.launchpad,
-    address: c.address,
+    address: String(c.address || "").toLowerCase(),
     poolId: c.poolId,
     pair: c.pair,
     price: c.price != null ? c.price : rep.price,
@@ -42,45 +41,41 @@ function slim(c, rank, extra) {
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "s-maxage=20, stale-while-revalidate=60");
   try {
-    const r = await fetch("https://memefimarketcap.com/data.json", {
-      headers: { "User-Agent": "memefi.biz desk" }
+    let uni = null;
+    try { uni = await buildUniverse(); } catch (e) { uni = null; }
+    let dump = null;
+    try {
+      const r = await fetch("https://memefimarketcap.com/data.json", { headers: { "User-Agent": "memefi.biz desk" } });
+      if (r.ok) dump = await r.json();
+    } catch (e) {}
+    const overlay = {};
+    if (dump && dump.coins) {
+      for (const c of dump.coins) {
+        if (c && c.address) overlay[String(c.address).toLowerCase()] = slimDump(c);
+      }
+    }
+    let coins = (uni && uni.coins) ? uni.coins.slice() : [];
+    if (!coins.length && dump) {
+      coins = (dump.coins || []).filter((c) => c && c.listingState === "listed").map((c) => slimDump(c));
+    }
+    coins = coins.map((c, i) => {
+      const extra = overlay[String(c.address || "").toLowerCase()] || {};
+      return Object.assign({}, extra, c, {
+        rank: i + 1,
+        holders: c.holders != null ? c.holders : extra.holders,
+        stockLockedUnits: c.stockLockedUnits != null ? c.stockLockedUnits : extra.stockLockedUnits,
+        stockLockedUsd: c.stockLockedUsd != null ? c.stockLockedUsd : extra.stockLockedUsd,
+        logo: extra.logo || c.logo,
+        imageUri: extra.imageUri || c.imageUri
+      });
     });
-    if (!r.ok) throw new Error("dump " + r.status);
-    const dump = await r.json();
-    const coins = (dump.coins || []).filter((c) => c && c.listingState === "listed");
-    const ranked = coins.slice().sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
-    let top = ranked.slice(0, 200).map((c, i) => slim(c, i + 1));
-    const newest = coins
-      .slice()
-      .sort((a, b) => String(b.launchedAt || "").localeCompare(String(a.launchedAt || "")))
-      .slice(0, 80)
-      .map((c, i) => slim(c, i + 1));
-    let metals = coins
-      .filter((c) => METALS.has(String(c.pair || "").toUpperCase()))
-      .sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0))
-      .slice(0, 120)
-      .map((c, i) => slim(c, i + 1));
-    const anomalies = dump.anomalies || [];
-    const flagged = anomalies.map((c) => slim(c, null, { flagged: true, flag: c.gate || c.why || "anomalous" }));
-    const pin = flagged.find((c) => String(c.address || "").toLowerCase() === PIN) ||
-      slim({
-        ticker: "MEME",
-        name: "A Meme Coin",
-        launchpad: "long",
-        address: PIN,
-        poolId: "0x27ccf0a6d1ee74840220715bcca7d3b01e0d33aa30d0259b47ae1585b3f4c071",
-        pair: "AMC"
-      }, null, { flagged: true, flag: "excluded-from-reference-rank" });
-    const gg = slim({
-      ticker: "GG",
-      name: "Golden Goose",
-      launchpad: "uniswap",
-      address: PIN_GG,
-      poolId: "0x9009d141e9189ca9d19d565468078383c192c2fa1d6f855957507bf8539643c5",
-      pair: "GLD"
-    }, null, {});
-    if (!top.some((c) => String(c.address || "").toLowerCase() === PIN)) top = [pin].concat(top);
-    if (!metals.some((c) => String(c.address || "").toLowerCase() === PIN_GG)) metals = [gg].concat(metals);
+    const seen = new Set(coins.map((c) => String(c.address || "").toLowerCase()));
+    if (overlay[PIN] && !seen.has(PIN)) coins.unshift(Object.assign({ flagged: true, flag: "pinned" }, overlay[PIN], { address: PIN, pair: overlay[PIN].pair || "AMC", ticker: "MEME" }));
+    if (overlay[PIN_GG] && !seen.has(PIN_GG)) coins.push(Object.assign({}, overlay[PIN_GG], { address: PIN_GG, pair: "GLD", ticker: overlay[PIN_GG].ticker || "GG" }));
+    coins.sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+    coins.forEach((c, i) => { c.rank = i + 1; });
+    const metals = coins.filter((c) => c.pair === "GLD" || c.pair === "SLV");
+    const newest = coins.slice().sort((a, b) => String(b.createdAt || b.launchedAt || "").localeCompare(String(a.createdAt || a.launchedAt || ""))).slice(0, 80);
     const quotes = {};
     await Promise.all(YAHOO.map(async (s) => {
       try {
@@ -88,31 +83,29 @@ export default async function handler(req, res) {
         if (px != null) quotes[s] = px;
       } catch (e) {}
     }));
-    const onchain = {};
-    const stocks = dump.stocks || {};
-    for (const [sym, row] of Object.entries(stocks)) {
-      if (row && Number.isFinite(Number(row.price))) onchain[sym] = Number(row.price);
+    const onchain = Object.assign({}, (uni && uni.onchain) || {});
+    if (dump && dump.stocks) {
+      for (const [sym, row] of Object.entries(dump.stocks)) {
+        if (row && Number.isFinite(Number(row.price)) && onchain[sym] == null) onchain[sym] = Number(row.price);
+      }
     }
-    const listing = dump.listing || {};
     res.status(200).json({
-      generated: dump.meta && dump.meta.generated,
-      headBlock: dump.meta && dump.meta.headBlock,
+      generated: (uni && uni.generated) || (dump && dump.meta && dump.meta.generated),
+      source: uni && uni.coins && uni.coins.length ? "memefi-indexer" : "dump-fallback",
+      wrappers: uni && uni.wrappers,
       aggregates: {
-        coins: (dump.aggregates && dump.aggregates.coinsListed) || coins.length,
-        launches: listing.totalLaunchesOnChain,
-        listed: listing.listed,
-        equities: (dump.aggregates && dump.aggregates.equitiesPaired) || Object.keys(stocks).length,
+        coins: coins.length,
+        listed: coins.length,
+        launches: dump && dump.listing && dump.listing.totalLaunchesOnChain,
         metals: metals.length,
-        volume24h: dump.aggregates && dump.aggregates.volume24hUsd && dump.aggregates.volume24hUsd.total,
-        stockLockedUsd: dump.aggregates && dump.aggregates.stockLockedUsd && dump.aggregates.stockLockedUsd.total,
-        byLaunchpad: listing.byLaunchpad || {}
+        volume24h: coins.reduce((n, c) => n + (Number(c.volume24h) || 0), 0)
       },
       quotes,
       onchain,
-      top,
+      top: coins.slice(0, 200),
       newest,
       metals,
-      flagged
+      flagged: coins.filter((c) => c.flagged)
     });
   } catch (e) {
     res.status(502).json({ error: String(e.message || e) });
