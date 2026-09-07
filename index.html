@@ -83,18 +83,39 @@
 </section>
 
 <section class="layout" id="prices">
-  <article class="card wide">
+  <article class="card wide board">
     <div class="card-head">
       <h2>Board</h2>
       <span id="session">Stock-paired</span>
     </div>
+    <div class="filters" id="pads">
+      <button data-pad="all" class="on">All launchpads</button>
+      <button data-pad="long">long.xyz</button>
+      <button data-pad="bankr">Bankr</button>
+      <button data-pad="feel">feel.cash</button>
+      <button data-pad="flap">Flap</button>
+      <button data-pad="other">Other</button>
+    </div>
     <div class="toolbar">
       <button data-tab="top" class="on">Top</button>
       <button data-tab="new">New</button>
-      <input id="q" placeholder="Search ticker, name, stock" autocomplete="off"/>
+      <input id="q" placeholder="Ticker, name, stock, or 0x address" autocomplete="off"/>
     </div>
-    <table>
-      <thead><tr><th>Meme</th><th>Stock</th><th>Last</th><th>24h</th><th>Mcap</th><th>On-chain</th><th>Cash</th><th>Premium</th><th>Locked</th><th>Volume</th></tr></thead>
+    <table class="tape">
+      <thead>
+        <tr>
+          <th class="num">#</th>
+          <th>Name</th>
+          <th>Paired stock</th>
+          <th>Price</th>
+          <th>24h</th>
+          <th>Market cap</th>
+          <th>Volume 24h</th>
+          <th>Stock locked</th>
+          <th>Premium</th>
+          <th>Holders</th>
+        </tr>
+      </thead>
       <tbody id="rows"><tr><td colspan="10">Loading universe…</td></tr></tbody>
     </table>
   </article>
@@ -105,10 +126,10 @@
   <div>
     <p class="eyebrow">Native pair</p>
     <h2>$MEMEFI / HOOD</h2>
-    <p>The desk token is not live. The wire cites outside desks. The board is a live slice of the Robinhood stock-paired universe.</p>
+    <p>The desk token is not live. Board prints are on-chain. Cash closes are the last regular-session print. Premium is wrapper versus cash.</p>
   </div>
 </section>
-<footer>memefi.biz · not financial advice · sources linked in the wire · premium = wrapper / cash close</footer>
+<footer>memefi.biz · not financial advice · board figures from chain state · premium = wrapper / cash close</footer>
 <script src="app.js"></script>
 </body>
 </html>
