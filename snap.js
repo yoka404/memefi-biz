@@ -69,17 +69,12 @@ function row(c, right, sub) {
 function paintUtil(util) {
   const box = document.getElementById('snap-util');
   if (!box) return;
-  if (!util || !(util.rows || []).length) {
+  if (!util || util.pct == null) {
     box.innerHTML = '';
     return;
   }
-  const chips = (util.rows || []).filter(function (r) { return r.aum || r.lockedUsd; }).map(function (r) {
-    const tip = r.symbol + ': ' + money(r.lockedUsd) + ' of the official wrapper sits in meme pools, versus ' + money(r.aum) + ' outstanding (on-chain supply x wrapper price).';
-    return '<div class="u" data-tip="' + esc(tip) + '"><em>' + esc(r.symbol) + '</em><b>' + pct(r.pct) + '</b><small>' + money(r.lockedUsd) + ' in pools / ' + money(r.aum) + '</small></div>';
-  });
-  const headTip = 'Share of official stock and metal tokens that sit in meme pools, versus outstanding wrapper value (supply x on-chain price) for names listed here.';
-  const total = '<div class="u total" data-tip="' + esc(headTip) + '"><em>In pools</em><b>' + pct(util.pct) + '</b><small>' + money(util.locked) + ' locked / ' + money(util.aum) + ' outstanding</small></div>';
-  box.innerHTML = total + chips.join('');
+  const tip = 'Share of official stock and metal tokens sitting in meme pools versus outstanding wrapper value.';
+  box.innerHTML = '<div class="u total" data-tip="' + esc(tip) + '"><em>In pools</em><b>' + pct(util.pct) + '</b><small>' + money(util.locked) + ' locked / ' + money(util.aum) + ' outstanding</small></div>';
 }
 function paintSnapshot(s) {
   if (!s) return;
