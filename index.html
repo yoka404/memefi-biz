@@ -14,10 +14,8 @@
 <meta property="og:description" content="Who controls the memes controls the tape."/>
 <meta property="og:url" content="https://www.memefi.biz/"/>
 <meta property="og:image" content="https://www.memefi.biz/memefi.png"/>
-<meta property="og:image:alt" content="MEMEFI"/>
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:site" content="@memefibiz"/>
-<meta name="twitter:creator" content="@memefibiz"/>
 <meta name="twitter:title" content="MEMEFI"/>
 <meta name="twitter:description" content="Who controls the memes controls the tape."/>
 <meta name="twitter:image" content="https://www.memefi.biz/memefi.png"/>
@@ -31,8 +29,8 @@
 <header class="nav">
   <a class="brand" href="/">MEMEFI</a>
   <nav>
-    <a class="on" href="#desk">Desk</a>
-    <a href="#wire">Wire</a>
+    <a class="on" href="#wire">Wire</a>
+    <a href="#snapshot">Tape</a>
     <a href="#prices">Board</a>
     <a href="#token">Token</a>
     <a href="https://x.com/memefibiz" target="_blank" rel="noopener">X</a>
@@ -40,30 +38,12 @@
   <div class="meta waiting" id="live-stamp"><i class="led" aria-hidden="true"></i><span id="live-text">Reading tape</span></div>
 </header>
 
-<section class="hero" id="desk">
-  <div class="hero-text">
-    <p class="eyebrow">Memefi desk</p>
-    <h1>Who controls<br>the memes<br>controls the tape.</h1>
-    <p class="lede">A newsroom for memecoins paired with tokenized U.S. equities and metals. Briefs from the open web sit above the board. Premium is the on-chain wrapper versus the last cash print.</p>
-    <p class="snap waiting" id="snap">Settling the universe</p>
+<section class="wire-desk" id="wire">
+  <div class="card-head">
+    <h2>Wire</h2>
+    <span id="wire-tag">Aggregator</span>
   </div>
-  <figure>
-    <img src="memefi.png" width="180" height="180" alt="Principal mark"/>
-    <figcaption>Principal</figcaption>
-  </figure>
-</section>
-
-<section class="news" id="wire">
-  <article class="feature-story">
-    <p class="eyebrow">Lead</p>
-    <h2>Stock-paired memecoins turned tokenized shares into quote assets.</h2>
-    <p>Pools on Robinhood Chain now hold a material slice of several official stock tokens. The dollar price of the meme is a ratio against that wrapper, so a weekend premium on the stock token reprices every pair that uses it. Cash cannot mint until the next regular session. The same tape covers tokenized metals: GLD and SLV. Pons V2 launches against the same official wrappers.</p>
-    <p class="byline">Desk file · mechanics, not a solicitation</p>
-  </article>
-  <div class="rail">
-    <div class="card-head"><h2>Wire</h2><span id="wire-tag">Aggregator</span></div>
-    <ul class="stories" id="wire-list"></ul>
-  </div>
+  <ol class="stories" id="wire-list"></ol>
 </section>
 
 <section class="layout" id="snapshot">
@@ -99,7 +79,7 @@
       <span id="session">Stock-paired</span>
     </div>
     <div class="filters" id="pads">
-      <button data-pad="all" class="on" data-tip="Pairs at or above $100k market cap. Flagged and test names stay off the tape.">Tape</button>
+      <button data-pad="all" class="on" data-tip="Pairs at or above $100k market cap.">Tape</button>
       <button data-pad="pons" data-tip="Pons V2 launches quoted in official stock or metal tokens.">Pons</button>
       <button data-pad="long" data-tip="long.xyz launches routed through Doppler Airlock.">long.xyz</button>
       <button data-pad="bankr" data-tip="Bankr launches on the same Airlock.">Bankr</button>
@@ -124,7 +104,7 @@
           <th>Price</th>
           <th>Volume 24h</th>
           <th data-tip="How much of the stock or metal token sits in the liquidity pool.">Asset locked</th>
-          <th data-tip="On-chain wrapper price vs last NYSE cash print. Empty if the quote is not a listed equity or metal.">Premium</th>
+          <th data-tip="On-chain wrapper price vs last NYSE cash print.">Premium</th>
           <th>Holders</th>
         </tr>
       </thead>
@@ -137,15 +117,22 @@
 </section>
 
 <section class="feature" id="token">
-  <img src="memefi.png" width="48" height="48" alt=""/>
   <div>
     <p class="eyebrow">Native pair</p>
     <h2>$MEMEFI / HOOD</h2>
-    <p>Who controls the memes controls the tape. The desk token is not live. Follow <a href="https://x.com/memefibiz" target="_blank" rel="noopener">@memefibiz</a>.</p>
+    <p>The desk token is not live. Follow <a href="https://x.com/memefibiz" target="_blank" rel="noopener">@memefibiz</a>.</p>
   </div>
 </section>
-<footer><a href="https://x.com/memefibiz" target="_blank" rel="noopener">@memefibiz</a> · Who controls the memes controls the tape</footer>
+
+<footer class="signoff">
+  <img src="memefi.png" width="88" height="88" alt="MEMEFI"/>
+  <div>
+    <p class="eyebrow">Memefi desk</p>
+    <p class="mark">Who controls<br>the memes<br>controls the tape.</p>
+  </div>
+</footer>
+<p id="snap" hidden></p>
 <script src="snap.js?v=10"></script>
-<script src="app.js?v=8"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
