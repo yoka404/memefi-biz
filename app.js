@@ -145,6 +145,7 @@ let PAD = "all";
 let CACHE = null;
 let LIVE = {};
 let ticking = false;
+const STABLES = { USDG: 1, USDC: 1, USDT: 1, DAI: 1, USD: 1, WETH: 1, ETH: 1 };
 
 function rowCoin(c) {
   const live = LIVE[String(c.poolId || "").toLowerCase()];
@@ -157,9 +158,13 @@ function rowCoin(c) {
   if (live.volume && live.volume.h24 != null) out.volume24h = Number(live.volume.h24);
   if (live.priceChange && live.priceChange.h24 != null) out.change24h = Number(live.priceChange.h24);
   if (live.info && live.info.imageUrl) out.dexImage = live.info.imageUrl;
+  const quote = String((live.quoteToken && live.quoteToken.symbol) || "").toUpperCase();
+  const pair = String(c.pair || "").toUpperCase();
   const meme = Number(live.priceUsd);
   const native = Number(live.priceNative);
-  if (Number.isFinite(meme) && Number.isFinite(native) && native > 0) out._wrap = meme / native;
+  if (quote && pair && quote === pair && !STABLES[quote] && Number.isFinite(meme) && Number.isFinite(native) && native > 0) {
+    out._wrap = meme / native;
+  }
   return out;
 }
 
