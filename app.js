@@ -7,9 +7,12 @@ const PAIRS = [
   { id: "0xd1c2f6cb178a165a643deae8752098dea08d51b6170cd8e36e196ef03dc74751", meme: "SAYLORMOON", stock: "MSTR" }
 ];
 
+const HOLIDAYS = new Set(["2026-09-07", "2026-11-26", "2026-12-25"]);
+
 function fmtPx(n) {
   const x = Number(n);
   if (!Number.isFinite(x)) return "—";
+  if (x >= 100) return x.toFixed(2);
   if (x >= 1) return x.toFixed(2);
   if (x >= 0.01) return x.toFixed(4);
   return x.toPrecision(3);
@@ -26,6 +29,49 @@ function fmtChg(n) {
   if (!Number.isFinite(x)) return { text: "—", cls: "" };
   const sign = x > 0 ? "+" : "";
   return { text: sign + x.toFixed(1) + "%", cls: x >= 0 ? "up" : "dn" };
+}
+function fmtPrem(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return { text: "n/a", cls: "mute" };
+  const sign = x > 0 ? "+" : "";
+  let cls = "";
+  if (x >= 20) cls = "fire";
+  else if (x >= 5) cls = "up";
+  else if (x <= -5) cls = "dn";
+  return { text: sign + x.toFixed(1) + "%", cls };
+}
+
+function nyParts(d) {
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  });
+  const o = {};
+  for (const p of fmt.formatToParts(d)) o[p.type] = p.value;
+  return o;
+}
+function cashSession(d) {
+  const p = nyParts(d);
+  const iso = p.year + "-" + p.month + "-" + p.day;
+  const wd = p.weekday;
+  const minutes = Number(p.hour) * 60 + Number(p.minute);
+  const holiday = HOLIDAYS.has(iso);
+  const weekend = wd === "Sat" || wd === "Sun";
+  const openMins = 9 * 60 + 30;
+  const closeMins = 16 * 60;
+  const inHours = !weekend && !holiday && minutes >= openMins && minutes < closeMins;
+  let reason = "OPEN";
+  if (weekend) reason = "WEEKEND · no mint";
+  else if (holiday) reason = iso === "2026-09-07" ? "CLOSED · Labor Day · no mint" : "CLOSED · holiday · no mint";
+  else if (minutes < openMins) reason = "PRE-OPEN · cash last";
+  else if (minutes >= closeMins) reason = "AFTER HOURS · no mint";
+  return { open: inHours, reason, iso };
 }
 
 async function loadDex(ids) {
@@ -46,6 +92,17 @@ async function loadDex(ids) {
   return [];
 }
 
+async function loadCloses() {
+  try {
+    const r = await fetch("/api/closes?symbols=AMC,NVDA,HIMS,MU,MSTR,TSLA,HOOD");
+    if (!r.ok) return {};
+    const data = await r.json();
+    return data.quotes || {};
+  } catch (e) {
+    return {};
+  }
+}
+
 function stockPriceFromPair(p) {
   const meme = Number(p.priceUsd);
   const native = Number(p.priceNative);
@@ -54,42 +111,56 @@ function stockPriceFromPair(p) {
 }
 
 async function refresh() {
-  const rows = document.getElementById("rows");
-  const list = await loadDex(PAIRS.map((p) => p.id));
+  const session = cashSession(new Date());
+  const stamp = document.getElementById("live-stamp");
+  if (stamp) stamp.textContent = session.reason;
+  const sessEl = document.getElementById("session");
+  if (sessEl) sessEl.textContent = session.open ? "Cash open" : session.reason;
+
+  const [list, quotes] = await Promise.all([
+    loadDex(PAIRS.map((p) => p.id)),
+    loadCloses()
+  ]);
   const byId = Object.fromEntries(list.map((p) => [p.pairAddress.toLowerCase(), p]));
+  const rows = document.getElementById("rows");
   rows.innerHTML = PAIRS.map((meta) => {
     const p = byId[meta.id.toLowerCase()];
-    if (!p) return `<tr><td>$${meta.meme}</td><td>${meta.stock}</td><td colspan="4">unavailable</td></tr>`;
+    if (!p) return `<tr><td>$${meta.meme}</td><td>${meta.stock}</td><td colspan="5">unavailable</td></tr>`;
     const chg = fmtChg((p.priceChange || {}).h24);
     const under = stockPriceFromPair(p);
+    const cash = quotes[meta.stock] && quotes[meta.stock].cash;
+    const prem = under != null && cash ? ((under / cash) - 1) * 100 : NaN;
+    const pr = fmtPrem(prem);
     return `<tr>
       <td>$${meta.meme}</td>
       <td>${meta.stock}</td>
       <td>${fmtPx(p.priceUsd)}</td>
       <td class="${chg.cls}">${chg.text}</td>
       <td>${under == null ? "—" : fmtPx(under)}</td>
+      <td>${cash ? fmtPx(cash) : (meta.stock === "SPCX" ? "pre-IPO" : "—")}</td>
+      <td class="${pr.cls}">${pr.text}</td>
       <td>${fmtUsd((p.volume || {}).h24)}</td>
     </tr>`;
   }).join("");
 
   const meme = byId[PAIRS[2].id.toLowerCase()];
-  const ai = byId[PAIRS[0].id.toLowerCase()];
   if (meme) {
     const el = document.getElementById("px");
     if (el) el.textContent = fmtPx(meme.priceUsd);
     const chg = fmtChg((meme.priceChange || {}).h24);
-    const s = el && el.parentElement && el.parentElement.querySelector("s");
+    const s = document.getElementById("pxchg") || (el && el.parentElement && el.parentElement.querySelector("s"));
     if (s) { s.textContent = chg.text; s.className = chg.cls; }
     const amc = stockPriceFromPair(meme);
-    const hood = document.getElementById("under");
-    if (hood && amc != null) hood.textContent = fmtPx(amc);
+    const underEl = document.getElementById("under");
+    if (underEl && amc != null) underEl.textContent = fmtPx(amc);
+    const cash = quotes.AMC && quotes.AMC.cash;
+    const premEl = document.getElementById("prem");
+    if (premEl && amc != null && cash) {
+      const pr = fmtPrem(((amc / cash) - 1) * 100);
+      premEl.textContent = pr.text;
+      premEl.className = pr.cls;
+    }
   }
-  if (ai) {
-    const ratio = document.getElementById("ratio");
-    if (ratio && ai.priceNative) ratio.textContent = Number(ai.priceNative).toPrecision(3);
-  }
-  const stamp = document.getElementById("live-stamp");
-  if (stamp) stamp.textContent = "Live · DexScreener · " + new Date().toUTCString().slice(17, 25) + " UTC";
 }
 
 refresh();

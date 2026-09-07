@@ -12,18 +12,18 @@
 <header class="nav">
   <div class="brand"><img src="memefi.png" alt=""/>MEMEFI</div>
   <nav><a class="on">Desk</a><a>Prices</a><a>Wire</a><a>Token</a></nav>
-  <div class="meta" id="live-stamp">Live · DexScreener</div>
+  <div class="meta" id="live-stamp">Cash session…</div>
 </header>
 
 <section class="hero">
   <div class="hero-text">
     <p class="eyebrow">News aggregator and prices</p>
     <h1>The tape after<br>the punchline.</h1>
-    <p class="lede">A desk for memecoins paired with tokenized equities. Prices are read from DexScreener on Robinhood Chain. The wire remains illustrative until the aggregator is connected.</p>
+    <p class="lede">On-chain stock tokens versus the cash close. Premium is wrapper price divided by the last NYSE print. When cash is shut, authorized participants cannot mint.</p>
     <div class="pills">
       <div><em>MEME</em><b id="px">—</b><s id="pxchg"></s></div>
       <div><em>AMC on-chain</em><b id="under">—</b></div>
-      <div><em>AI / NVDA</em><b id="ratio">—</b></div>
+      <div><em>AMC premium</em><b id="prem">—</b></div>
     </div>
   </div>
   <figure>
@@ -34,16 +34,16 @@
 
 <section class="layout">
   <article class="card wide">
-    <div class="card-head"><h2>Prices</h2><span>Stock-paired · live</span></div>
+    <div class="card-head"><h2>Prices</h2><span id="session">Stock-paired</span></div>
     <table>
-      <thead><tr><th>Meme</th><th>Stock</th><th>Last</th><th>24h</th><th>Underlying</th><th>Volume</th></tr></thead>
-      <tbody id="rows"><tr><td colspan="6">Loading live pairs…</td></tr></tbody>
+      <thead><tr><th>Meme</th><th>Stock</th><th>Last</th><th>24h</th><th>On-chain</th><th>Cash</th><th>Premium</th><th>Volume</th></tr></thead>
+      <tbody id="rows"><tr><td colspan="8">Loading live pairs…</td></tr></tbody>
     </table>
   </article>
   <article class="card">
     <div class="card-head"><h2>Wire</h2><span>Paper</span></div>
     <ul id="wire">
-      <li><time>Desk</time>Price feed is live. Wire copy is still paper until the news agent is connected.</li>
+      <li><time>Desk</time>Premium compares the tokenized stock in the pair to the last cash print. SPCX has no listed close.</li>
     </ul>
   </article>
 </section>
@@ -53,10 +53,10 @@
   <div>
     <p class="eyebrow">Native pair</p>
     <h2>$MEMEFI / HOOD</h2>
-    <p>The desk token is intended to be quoted against tokenized Robinhood stock. It is not live. Figures on the board above are production DexScreener prints.</p>
+    <p>The desk token is not live. Board prints are DexScreener. Cash closes are the last regular-session NYSE/Nasdaq print.</p>
   </div>
 </section>
-<footer>memefi.biz · not financial advice · live prices via DexScreener</footer>
+<footer>memefi.biz · not financial advice · premium = on-chain wrapper / cash close</footer>
 <script src="app.js"></script>
 </body>
 </html>
