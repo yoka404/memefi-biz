@@ -11,15 +11,15 @@
 <body>
 <header class="nav">
   <div class="brand"><img src="memefi.png" alt=""/>MEMEFI</div>
-  <nav><a class="on">Desk</a><a>Prices</a><a>Wire</a><a>Token</a></nav>
+  <nav><a class="on" href="#desk">Desk</a><a href="#wire">Wire</a><a href="#prices">Prices</a><a href="#token">Token</a></nav>
   <div class="meta" id="live-stamp">Cash session…</div>
 </header>
 
-<section class="hero">
+<section class="hero" id="desk">
   <div class="hero-text">
-    <p class="eyebrow">News aggregator and prices</p>
+    <p class="eyebrow">Memefi desk</p>
     <h1>The tape after<br>the punchline.</h1>
-    <p class="lede">Every stock-paired memecoin on Robinhood Chain, ranked. Premium is the on-chain wrapper versus the last cash print. New listings appear as launchpads route through the same airlock.</p>
+    <p class="lede">A newsroom for memecoins paired with tokenized U.S. equities. Briefs from the open web sit above the board. Premium is the on-chain wrapper versus the last cash print.</p>
     <p class="snap" id="snap">Loading universe…</p>
     <div class="pills">
       <div><em id="focus-lab">MEME</em><b id="px">—</b><s id="pxchg"></s></div>
@@ -33,10 +33,59 @@
   </figure>
 </section>
 
-<section class="layout full">
+<section class="news" id="wire">
+  <article class="feature-story">
+    <p class="eyebrow">Lead</p>
+    <h2>Stock-paired memecoins turned tokenized shares into quote assets.</h2>
+    <p>Pools on Robinhood Chain now hold a material slice of several official stock tokens. The dollar price of the meme is a ratio against that wrapper, so a weekend premium on the stock token reprices every pair that uses it. Cash cannot mint until the next regular session.</p>
+    <p class="byline">Desk file · mechanics, not a solicitation</p>
+  </article>
+  <div class="rail">
+    <div class="card-head"><h2>Wire</h2><span>Aggregator</span></div>
+    <ul class="stories">
+      <li>
+        <a href="https://decrypt.co/377463/crypto-meme-coin-stock-pairs-robinhood" target="_blank" rel="noopener">
+          <em>Decrypt</em>
+          <strong>BONER absorbed more than half of tokenized HIMS over a closed session.</strong>
+          <span>The cash stock barely moved when the tape reopened.</span>
+        </a>
+      </li>
+      <li>
+        <a href="https://www.bankless.com/read/the-stock-paired-memecoin-squeeze-is-a-lie" target="_blank" rel="noopener">
+          <em>Bankless</em>
+          <strong>Cornering the wrapper does not corner the listed share.</strong>
+          <span>Scale versus NYSE float remains the binding constraint.</span>
+        </a>
+      </li>
+      <li>
+        <a href="https://defiprime.com/stock-paired-memecoins" target="_blank" rel="noopener">
+          <em>DefiPrime</em>
+          <strong>Quoted in Nvidia: the stock-paired memecoin boom, measured on-chain.</strong>
+          <span>AI/NVDA remains the deepest semiconductor pair.</span>
+        </a>
+      </li>
+      <li>
+        <a href="https://www.theblock.co/news/markets/2026-09-02-memecoin-shenanigans-nasdaq-microcap-mushroom-seller-farmmi-413374" target="_blank" rel="noopener">
+          <em>The Block</em>
+          <strong>A Farmmi pairing spilled into the Nasdaq tape.</strong>
+          <span>Microcap cash prints are a different risk than NVDA or AMC.</span>
+        </a>
+      </li>
+      <li>
+        <a href="https://memecoin.wiki/wiki/memefi" target="_blank" rel="noopener">
+          <em>memecoin.wiki</em>
+          <strong>Memefi as an era label, distinct from the 2024 Telegram game.</strong>
+          <span>The slogan predates most of the Robinhood pairs.</span>
+        </a>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section class="layout" id="prices">
   <article class="card wide">
     <div class="card-head">
-      <h2>Prices</h2>
+      <h2>Board</h2>
       <span id="session">Stock-paired</span>
     </div>
     <div class="toolbar">
@@ -51,15 +100,15 @@
   </article>
 </section>
 
-<section class="feature">
+<section class="feature" id="token">
   <img src="memefi.png" alt=""/>
   <div>
     <p class="eyebrow">Native pair</p>
     <h2>$MEMEFI / HOOD</h2>
-    <p>The desk token is not live. The board is a live slice of the Robinhood stock-paired universe. Cash closes are the last regular-session print.</p>
+    <p>The desk token is not live. The wire cites outside desks. The board is a live slice of the Robinhood stock-paired universe.</p>
   </div>
 </section>
-<footer>memefi.biz · not financial advice · on-chain dump via memefimarketcap · premium = wrapper / cash close</footer>
+<footer>memefi.biz · not financial advice · sources linked in the wire · premium = wrapper / cash close</footer>
 <script src="app.js"></script>
 </body>
 </html>
