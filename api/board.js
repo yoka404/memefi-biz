@@ -2,11 +2,13 @@ export const config = { maxDuration: 30 };
 import { buildUniverse } from "../lib/indexer.js";
 import { fillHolders } from "../lib/blockscout.js";
 import { fillPads } from "../lib/airlock.js";
+import { fillDex } from "../lib/dex.js";
 import { padGroup } from "../lib/pads.js";
 
 const YAHOO = ["AMC","NVDA","HIMS","MU","MSTR","TSLA","HOOD","AAPL","GME","SPY","MSFT","AMD","AMZN","META","GOOGL","NFLX","PLTR","INTC","BABA","COIN","RBLX","DJT","GLD","SLV","QQQ","IWM"];
 const PIN = "0x385f4f8ae47651ce5f58f5265395a669f8281e18".toLowerCase();
 const PIN_GG = "0xcacb0e9caccee63ec4d82952e561a291c68bcb68".toLowerCase();
+const PIN_BONER = "0x98096d17e191b3da1d5f99a6d7b3584351b11e18".toLowerCase();
 const JUNK = /^(test|asdf|qwer|xxxx|zzzz|aaaa|abcd|foo|bar|xxx)/i;
 const TRUSTED = new Set(["long", "bankr", "feel", "flap", "pons"]);
 
@@ -29,6 +31,7 @@ function pickMcap(live, base) {
   const lm = Number(live && live.marketCap);
   const bm = Number(base && base.marketCap);
   const liq = Number((live && live.liquidityUsd) || (base && base.liquidityUsd));
+  if (Number.isFinite(bm) && Number.isFinite(lm) && bm > 1e6 && lm > 0 && bm / lm > 8) return bm;
   if (Number.isFinite(lm) && Number.isFinite(bm) && bm > 0) {
     if (lm > 5e8 && bm < 5e8) return bm;
     if (lm / bm > 8) return bm;
@@ -88,32 +91,33 @@ function mergeRow(base, live) {
     volume24h: live.volume24h != null ? live.volume24h : (base && base.volume24h),
     change24h: live.change24h != null ? live.change24h : (base && base.change24h),
     pair: (base && base.pair) || live.pair,
-    poolId: live.poolId || (base && base.poolId),
-    listed: Boolean(base && base.listed),
+    poolId: (base && base.poolId) || live.poolId,
+    listed: Boolean((base && base.listed) || (live && live.listed)),
     liquidityUsd: live.liquidityUsd != null ? live.liquidityUsd : (base && base.liquidityUsd)
   });
 }
 
 function looksScam(c) {
   if (!c) return true;
-  if (c.address === PIN || c.address === PIN_GG) return false;
-  if (c.flagged) return true;
+  if (c.address === PIN || c.address === PIN_GG || c.address === PIN_BONER) return false;
   const tick = String(c.ticker || "");
   const name = String(c.name || "").replace(/\s+/g, "");
   if (JUNK.test(tick) || JUNK.test(name)) return true;
   if (/testasdas|asdasd|qwerty|aaaaaa/i.test(tick + name)) return true;
   const mcap = Number(c.marketCap);
   const liq = Number(c.liquidityUsd);
+  const trusted = TRUSTED.has(padGroup(c.launchpad));
+  if (c.flagged && !trusted) return true;
   if (Number.isFinite(mcap) && mcap > 1e9) return true;
-  if (Number.isFinite(mcap) && mcap > 4e8 && !c.listed) return true;
+  if (Number.isFinite(mcap) && mcap > 4e8 && !c.listed && !trusted) return true;
   if (c.holders === 0 && Number.isFinite(mcap) && mcap > 5e5 && !c.listed) return true;
-  if (Number.isFinite(liq) && liq > 0 && liq < 100 && Number.isFinite(mcap) && mcap > 1e6) return true;
+  if (Number.isFinite(liq) && liq > 0 && liq < 100 && Number.isFinite(mcap) && mcap > 1e6 && !trusted) return true;
   return false;
 }
 
 function isTrusted(c) {
   if (!c) return false;
-  if (c.address === PIN || c.address === PIN_GG) return true;
+  if (c.address === PIN || c.address === PIN_GG || c.address === PIN_BONER) return true;
   return TRUSTED.has(padGroup(c.launchpad));
 }
 
@@ -152,7 +156,8 @@ export default async function handler(req, res) {
       for (const c of dump.anomalies) {
         if (!c || !c.address) continue;
         const addr = String(c.address).toLowerCase();
-        map[addr] = slimDump(c, { flagged: true, flag: c.gate || c.why || "anomalous", listed: false });
+        const trusted = TRUSTED.has(padGroup(c.launchpad));
+        map[addr] = slimDump(c, { flagged: !trusted, flag: c.gate || c.why || null, listed: trusted });
       }
     }
     for (const c of (uni && uni.coins) || []) {
@@ -160,10 +165,13 @@ export default async function handler(req, res) {
       if (!addr) continue;
       map[addr] = mergeRow(map[addr] || { listed: false }, c);
     }
-    if (!map[PIN]) map[PIN] = { ticker: "MEME", name: "A Meme Coin", address: PIN, pair: "AMC", launchpad: "long", flagged: true, flag: "pinned", listed: false };
+    if (!map[PIN]) map[PIN] = { ticker: "MEME", name: "A Meme Coin", address: PIN, pair: "AMC", launchpad: "long", listed: true };
     if (!map[PIN_GG]) map[PIN_GG] = { ticker: "GG", name: "Golden Goose", address: PIN_GG, pair: "GLD", launchpad: "uniswap", listed: true };
+    if (!map[PIN_BONER]) map[PIN_BONER] = { ticker: "BONER", name: "Boner Coin", address: PIN_BONER, pair: "HIMS", launchpad: "long", listed: true };
     const raw = Object.values(map).filter((c) => !looksScam(c));
     const trusted = raw.filter(isTrusted).sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
+    await fillDex(trusted.slice(0, 30), 24);
+    trusted.sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
     await fillHolders(trusted.slice(0, 40), 8);
     await fillPads(trusted.slice(0, 24), 16);
     trusted.forEach((c, i) => { c.rank = i + 1; });
@@ -184,7 +192,7 @@ export default async function handler(req, res) {
     }
     res.status(200).json({
       generated: (uni && uni.generated) || (dump && dump.meta && dump.meta.generated),
-      source: uni && uni.coins && uni.coins.length ? "memefi-indexer+airlock" : "registry",
+      source: uni && uni.coins && uni.coins.length ? "memefi-indexer+dex" : "registry+dex",
       wrappers: uni && uni.wrappers,
       aggregates: {
         coins: trusted.length,
