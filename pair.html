@@ -11,27 +11,28 @@
 <body>
 <header class="nav">
   <div class="brand"><a href="/" style="color:inherit;text-decoration:none;display:flex;align-items:center;gap:10px"><img src="/memefi.png" alt=""/>MEMEFI</a></div>
-  <nav><a href="/">Desk</a><a href="/#wire">Wire</a><a href="/#prices">Prices</a></nav>
+  <nav><a href="/">Desk</a><a href="/#wire">Wire</a><a href="/#prices">Board</a></nav>
   <div class="meta" id="live-stamp">Pair file</div>
 </header>
 
-<section class="hero pair-hero">
-  <div class="hero-text">
-    <p class="eyebrow" id="pad">Profile</p>
-    <h1 id="title">Loading pair…</h1>
-    <p class="lede" id="sub"></p>
-    <div class="pills" id="pills"></div>
+<section class="profile">
+  <div class="profile-top">
+    <img id="avatar" alt=""/>
+    <div>
+      <p class="eyebrow" id="pad">Profile</p>
+      <h1 id="title">Loading pair…</h1>
+      <p class="lede" id="sub"></p>
+      <div class="socials" id="socials"></div>
+    </div>
   </div>
-  <figure>
-    <img src="/memefi.png" alt=""/>
-    <figcaption>Desk mark</figcaption>
-  </figure>
+  <div class="pills" id="pills"></div>
+  <p class="flagline" id="flag" hidden></p>
 </section>
 
 <section class="layout">
   <article class="card wide">
     <div class="card-head"><h2>File</h2><span id="session">On-chain</span></div>
-    <table>
+    <table class="tape file">
       <tbody id="file"></tbody>
     </table>
   </article>
