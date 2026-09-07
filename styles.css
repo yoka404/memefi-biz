@@ -100,17 +100,11 @@ a.pair{color:inherit;text-decoration:none}
 .feature h2{font-size:clamp(18px,3vw,24px);margin:4px 0 8px}
 .feature p:last-child{color:var(--mute);font-size:14px;max-width:56ch}
 footer{text-align:center;color:#5c5c68;padding:20px 12px;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
-.snap-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+.snap-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
 .snap-kpis div{background:var(--card);padding:16px 14px}
 .snap-kpis em{display:block;color:var(--mute);font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;font-style:normal}
 .snap-kpis b{display:block;font-size:22px;font-weight:650;font-variant-numeric:tabular-nums}
 .snap-kpis small{display:block;color:var(--mute);font-size:11px;margin-top:4px}
-.snap-util{display:flex;gap:8px;flex-wrap:wrap;padding:12px 14px;border-bottom:1px solid var(--line)}
-.snap-util .u{background:var(--elev);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:108px;cursor:help}
-.snap-util .u.total{border-color:#3a2a66}
-.snap-util em{display:block;color:var(--mute);font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-style:normal;margin-bottom:3px}
-.snap-util b{display:block;font-size:16px;font-weight:650;font-variant-numeric:tabular-nums}
-.snap-util small{display:block;color:var(--mute);font-size:11px;margin-top:3px}
 .snap-split{display:grid;grid-template-columns:1fr 1fr;gap:0}
 .snap-split > div{border-top:1px solid var(--line)}
 .snap-split > div + div{border-left:1px solid var(--line)}
@@ -130,8 +124,12 @@ footer{text-align:center;color:#5c5c68;padding:20px 12px;font-size:11px;letter-s
   font-size:11px;font-weight:500;letter-spacing:0;text-transform:none;white-space:normal;line-height:1.4;
   box-shadow:0 8px 24px rgba(0,0,0,.55)
 }
+@media(max-width:1100px){
+  .snap-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
 @media(max-width:980px){
-  .hero,.news,.snap-kpis,.snap-split{grid-template-columns:1fr}
+  .hero,.news,.snap-split{grid-template-columns:1fr}
+  .snap-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
   .snap-split > div + div{border-left:0}
   figure{order:-1}
   figure img{width:120px}
