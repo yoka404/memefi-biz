@@ -5,12 +5,16 @@ function letterSvg(label) {
 }
 function pfp(c) {
   const addr = String(c.address || "").toLowerCase();
+  const tick = String(c.ticker || "").toLowerCase();
   const out = [];
   if (c.dexImage) out.push(c.dexImage);
   if (addr) {
+    out.push("https://storage.long.xyz/tokens/" + addr + ".png");
+    out.push("https://storage.long.xyz/tokens/" + addr + ".jpg");
     out.push("https://dd.dexscreener.com/ds-data/tokens/robinhood/" + addr + ".png?size=lg");
     out.push("https://dd.dexscreener.com/ds-data/tokens/robinhood/" + addr + ".png");
   }
+  if (tick) out.push("https://app.long.xyz/coins/" + encodeURIComponent(tick) + ".webp");
   if (c.geckoImage) out.push(c.geckoImage);
   if (c.imageUri) {
     const u = String(c.imageUri);
@@ -129,7 +133,11 @@ function stockImgs(pair, logos) {
     if (pack.stock) out.push(pack.stock);
     if (pack.rh) out.push(pack.rh);
   }
-  if (pair) out.push("https://financialmodelingprep.com/image-stock/" + encodeURIComponent(pair) + ".png");
+  if (pair) {
+    const s = String(pair).toLowerCase();
+    out.push("https://app.long.xyz/robinhood-coins/" + encodeURIComponent(s) + ".png");
+    out.push("https://financialmodelingprep.com/image-stock/" + encodeURIComponent(pair) + ".png");
+  }
   out.push(letterSvg(pair || "?"));
   return out.filter(Boolean);
 }
