@@ -1,13 +1,22 @@
+function letterSvg(label) {
+  const t = String(label || "?").replace(/[^A-Za-z0-9]/g, "").slice(0, 2).toUpperCase() || "?";
+  const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' rx='12' fill='#16161c'/><text x='32' y='40' text-anchor='middle' font-family='Inter,system-ui,sans-serif' font-size='22' font-weight='650' fill='#c4c4cc'>" + t + "</text></svg>";
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
 function pfp(c) {
   const addr = String(c.address || "").toLowerCase();
   const out = [];
   if (c.dexImage) out.push(c.dexImage);
-  if (addr) out.push("https://dd.dexscreener.com/ds-data/tokens/robinhood/" + addr + ".png");
+  if (addr) {
+    out.push("https://dd.dexscreener.com/ds-data/tokens/robinhood/" + addr + ".png?size=lg");
+    out.push("https://dd.dexscreener.com/ds-data/tokens/robinhood/" + addr + ".png");
+  }
   if (c.imageUri) {
     const u = String(c.imageUri);
     out.push(u.indexOf("ipfs://") === 0 ? "https://ipfs.io/ipfs/" + u.slice(7) : u);
   }
   if (c.logo) out.push("https://memefimarketcap.com/" + String(c.logo).replace(/^\//, ""));
+  out.push(letterSvg(c.ticker || c.name));
   return out.filter(Boolean);
 }
 function fmtPx(n) {
@@ -112,10 +121,16 @@ function mcapOf(c) {
   return Number.isFinite(n) ? n : 0;
 }
 function stockImgs(pair, logos) {
+  const out = [];
   const pack = logos && logos[pair];
-  if (!pack) return [];
-  if (typeof pack === "string") return [pack];
-  return [pack.stock, pack.rh].filter(Boolean);
+  if (typeof pack === "string") out.push(pack);
+  else if (pack) {
+    if (pack.stock) out.push(pack.stock);
+    if (pack.rh) out.push(pack.rh);
+  }
+  if (pair) out.push("https://financialmodelingprep.com/image-stock/" + encodeURIComponent(pair) + ".png");
+  out.push(letterSvg(pair || "?"));
+  return out.filter(Boolean);
 }
 
 let TAB = "top";
@@ -130,7 +145,8 @@ function rowCoin(c) {
   const out = Object.assign({}, c);
   if (live.priceUsd) out.price = Number(live.priceUsd);
   const liveM = Number(live.marketCap || live.fdv);
-  if (Number.isFinite(liveM) && liveM > 0) out.marketCap = liveM;
+  const cur = Number(c.marketCap);
+  if (Number.isFinite(liveM) && liveM > 0 && (!Number.isFinite(cur) || liveM >= cur * 0.25)) out.marketCap = liveM;
   if (live.volume && live.volume.h24 != null) out.volume24h = Number(live.volume.h24);
   if (live.priceChange && live.priceChange.h24 != null) out.change24h = Number(live.priceChange.h24);
   if (live.info && live.info.imageUrl) out.dexImage = live.info.imageUrl;
@@ -171,7 +187,7 @@ function renderRows(list) {
           <span class="nm"><strong>${c.name || c.ticker} <span>${c.ticker}</span></strong>${flag}</span>
         </a>
       </td>
-      <td><div class="stock">${sl.length ? `<img class="stock-logo" src="${sl[0]}" data-alts="${sl.slice(1).join("|")}" alt="" width="18" height="18" loading="lazy" onerror="(function(el){var a=(el.getAttribute('data-alts')||'').split('|').filter(Boolean);if(!a.length){el.onerror=null;el.removeAttribute('src');return;}el.src=a.shift();el.setAttribute('data-alts',a.join('|'));})(this)"/>` : ""}<span><b>${c.pair || "—"}</b><em>${wrap != null ? fmtPx(wrap) : "—"}</em></span></div></td>
+      <td><div class="stock"><img class="stock-logo" src="${sl[0] || ""}" data-alts="${sl.slice(1).join("|")}" alt="" width="18" height="18" loading="lazy" onerror="(function(el){var a=(el.getAttribute('data-alts')||'').split('|').filter(Boolean);if(!a.length){el.onerror=null;el.removeAttribute('src');return;}el.src=a.shift();el.setAttribute('data-alts',a.join('|'));})(this)"/><span><b>${c.pair || "—"}</b><em>${wrap != null ? fmtPx(wrap) : "—"}</em></span></div></td>
       <td class="px">${fmtPx(c.price)}</td>
       <td class="${chg.cls}">${chg.text}</td>
       <td class="mcap">${fmtUsd(c.marketCap)}</td>
