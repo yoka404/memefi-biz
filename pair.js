@@ -25,6 +25,9 @@ function prem(onchain, cash) {
 }
 function setAvatar(img, urls) {
   const queue = urls.filter(Boolean);
+  const sk = document.getElementById("avatar-skel");
+  img.hidden = false;
+  if (sk) sk.remove();
   const next = () => {
     const u = queue.shift();
     if (!u) { img.removeAttribute("src"); img.alt = ""; return; }
@@ -57,6 +60,8 @@ async function main() {
   document.getElementById("pad").textContent = (c.launchpad || "airlock") + " · Robinhood Chain";
   title.textContent = (c.name || c.ticker) + "  " + c.ticker;
   document.getElementById("sub").textContent = "$" + c.ticker + " is quoted against tokenized " + (c.pair || "—") + ". Permanent file for this contract.";
+  const stamp = document.getElementById("live-stamp");
+  if (stamp) { stamp.classList.remove("waiting"); stamp.textContent = "Pair file"; }
   setAvatar(document.getElementById("avatar"), [c.logoDetail, c.logo, c.imageUri, c.dexImage]);
   if (data.flagged) {
     const f = document.getElementById("flag");
