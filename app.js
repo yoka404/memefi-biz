@@ -52,6 +52,7 @@ function fmtPrem(n) {
 }
 function padLabel(raw) {
   const s = String(raw || "").toLowerCase();
+  if (s.includes("pons")) return "Pons";
   if (s.includes("long")) return "long.xyz";
   if (s.includes("bankr")) return "Bankr";
   if (s.includes("feel")) return "feel.cash";
@@ -60,6 +61,7 @@ function padLabel(raw) {
 }
 function padGroup(raw) {
   const s = String(raw || "").toLowerCase();
+  if (s.includes("pons")) return "pons";
   if (s.includes("long")) return "long";
   if (s.includes("bankr")) return "bankr";
   if (s.includes("feel")) return "feel";
