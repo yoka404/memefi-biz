@@ -1,5 +1,12 @@
 function clean(s) {
-  return String(s || "").replace(/</g, "");
+  return String(s || "")
+    .replace(/</g, "<")
+    .replace(/>/g, ">")
+    .replace(/"/g, '"')
+    .replace(/&/g, "&")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 function paintWire(items) {
   const track = document.getElementById("wire-track");
@@ -11,13 +18,14 @@ function paintWire(items) {
     return;
   }
   track.innerHTML = list.map((it, i) => {
-    const href = clean(it.url || "#").replace(/"/g, "");
-    const img = clean(it.image || "").replace(/"/g, "");
+    const href = String(it.url || "#").replace(/"/g, "");
+    const img = String(it.image || "").replace(/"/g, "");
     const src = clean(it.source || "Wire");
     const title = clean(it.title || "");
-    const blurb = clean(it.blurb || "").slice(0, 140);
-    const photo = img
-      ? '<img src="' + img + '" alt="" loading="' + (i ? "lazy" : "eager") + '" onerror="this.remove()"/>'
+    let blurb = clean(it.blurb || "").slice(0, 140);
+    if (/^https?:|^href=|^<a /i.test(blurb)) blurb = "";
+    const photo = img && !/news\.google|gstatic|google\.com\/images/i.test(img)
+      ? '<img src="' + img + '" alt="" loading="' + (i ? "lazy" : "eager") + '" onerror="this.replaceWith(Object.assign(document.createElement(\'div\'),{className:\'ph\'}))"/>'
       : '<div class="ph"></div>';
     return '<a class="wire-card" href="' + href + '" target="_blank" rel="noopener">' +
       '<div class="shot">' + photo + '</div>' +
@@ -71,9 +79,8 @@ document.addEventListener("click", (e) => {
   }
   if (t.dataset && t.dataset.w != null) scrollToCard(Number(t.dataset.w));
 });
-const trackEl = () => document.getElementById("wire-track");
 setTimeout(() => {
-  const el = trackEl();
+  const el = document.getElementById("wire-track");
   if (!el) return;
   el.addEventListener("scroll", () => {
     const i = currentIndex();
