@@ -5,7 +5,7 @@ const METALS = new Set(["GLD","SLV"]);
 function padNorm(raw) {
   const s = String(raw || "").toLowerCase();
   if (s.includes("pons")) return "pons";
-  if (s.includes("long")) return "long";
+  if (s.includes("long") || s.includes("doppler") || s.includes("airlock")) return "long";
   if (s.includes("bankr")) return "bankr";
   if (s.includes("feel")) return "feel";
   if (s.includes("flap")) return "flap";
@@ -70,10 +70,23 @@ async function dex(address, stocks) {
   }
 }
 
-function ipfs(uri) {
-  if (!uri) return null;
-  if (uri.startsWith("ipfs://")) return "https://ipfs.io/ipfs/" + uri.slice(7);
-  return uri;
+function lockedFrom(dx, quote) {
+  if (!dx || !dx.liquidity) return {};
+  const qSym = String((dx.quoteToken && dx.quoteToken.symbol) || "").toUpperCase();
+  const bSym = String((dx.baseToken && dx.baseToken.symbol) || "").toUpperCase();
+  const want = String(quote || "").toUpperCase();
+  const qAmt = Number(dx.liquidity.quote);
+  const bAmt = Number(dx.liquidity.base);
+  const px = Number(dx.priceUsd);
+  const native = Number(dx.priceNative);
+  let units = null;
+  if (qSym === want && qAmt > 0) units = qAmt;
+  else if (bSym === want && bAmt > 0) units = bAmt;
+  if (units == null) return {};
+  let usd = null;
+  if (qSym === want && px > 0 && native > 0) usd = units * (px / native);
+  else if (bSym === want && px > 0) usd = units * px;
+  return { stockLockedUnits: units, stockLockedUsd: usd };
 }
 
 function keySocial(type, url) {
@@ -117,84 +130,67 @@ export default async function handler(req, res) {
     return;
   }
   try {
-    let dump = { coins: [], stocks: {}, anomalies: [], meta: {} };
-    try {
-      const r = await fetch("https://memefimarketcap.com/data.json", { headers: { "User-Agent": "memefi.biz desk" } });
-      if (r.ok) dump = await r.json();
-    } catch (e) {}
-    const kit = await stockkitMap();
-    const stocks = Object.assign({}, kit, dump.stocks || {});
-    let coin = (dump.coins || []).find((c) => String(c.address || "").toLowerCase() === address);
-    let flagged = null;
-    if (!coin) {
-      const a = (dump.anomalies || []).find((c) => String(c.address || "").toLowerCase() === address);
-      if (a) {
-        flagged = a.why || a.gate;
-        coin = Object.assign({}, a, a.reported || {});
-      }
-    }
+    const stocks = await stockkitMap();
     const dxpack = await dex(address, stocks);
     const dx = dxpack && dxpack.best;
-    if (!coin && !dx) {
+    if (!dx) {
       res.status(404).json({ error: "not found" });
       return;
     }
-    const quote = String((dx && dx.quoteToken && dx.quoteToken.symbol) || (coin && coin.pair) || "").toUpperCase();
+    const quote = String((dx.quoteToken && dx.quoteToken.symbol) || "").toUpperCase();
     const stock = quote && stocks[quote] ? stocks[quote] : null;
     const isEquity = Boolean(stock && stock.address);
     const isMetal = METALS.has(quote);
     const cash = isEquity || isMetal ? await yahoo(quote) : null;
-    const info = (dx && dx.info) || {};
-    const logo = (coin && coin.logo) ? ("https://memefimarketcap.com/" + coin.logo) : null;
-    const created = dx && dx.pairCreatedAt;
-    const tx = dx && dx.txns && (dx.txns.h24 || dx.txns.h6);
-    let holders = coin && (coin.holders || coin.holdersExclPoolManager || coin.holdersTotal);
-    if (holders == null) holders = await tokenHolders(address);
+    const info = dx.info || {};
+    const lock = lockedFrom(dx, quote);
+    const created = dx.pairCreatedAt;
+    const tx = dx.txns && (dx.txns.h24 || dx.txns.h6);
+    const holders = await tokenHolders(address);
+    const wrapPx = (Number(dx.priceUsd) > 0 && Number(dx.priceNative) > 0) ? Number(dx.priceUsd) / Number(dx.priceNative) : null;
     res.status(200).json({
-      generated: dump.meta && dump.meta.generated,
-      flagged,
+      generated: new Date().toISOString(),
+      flagged: null,
       isEquity: isEquity || isMetal,
       isMetal,
       coin: {
-        ticker: (coin && coin.ticker) || (dx && dx.baseToken && dx.baseToken.symbol),
-        name: (coin && coin.name) || (dx && dx.baseToken && dx.baseToken.name),
+        ticker: dx.baseToken && dx.baseToken.symbol,
+        name: (dx.baseToken && dx.baseToken.name) || (dx.baseToken && dx.baseToken.symbol),
         address,
-        poolId: (dx && dx.pairAddress) || (coin && coin.poolId),
-        pair: quote || (coin && coin.pair),
-        pairAddress: (dx && dx.quoteToken && dx.quoteToken.address) || (stock && stock.address),
-        launchpad: padNorm((coin && coin.launchpad) || (dx && dx.dexId)),
-        price: (dx && dx.priceUsd) || (coin && coin.price),
-        priceNative: dx && dx.priceNative,
-        change1h: dx && dx.priceChange && dx.priceChange.h1,
-        change6h: dx && dx.priceChange && dx.priceChange.h6,
-        change24h: dx && dx.priceChange && dx.priceChange.h24,
-        marketCap: (dx && (dx.marketCap || dx.fdv)) || (coin && coin.marketCap),
-        fdv: dx && dx.fdv,
-        volume24h: (dx && dx.volume && dx.volume.h24) || (coin && coin.volume24h),
-        liquidityUsd: (dx && dx.liquidity && dx.liquidity.usd) || (coin && coin.liquidityUsd),
+        poolId: dx.pairAddress,
+        pair: quote,
+        pairAddress: (dx.quoteToken && dx.quoteToken.address) || (stock && stock.address),
+        launchpad: padNorm(dx.dexId),
+        price: dx.priceUsd,
+        priceNative: dx.priceNative,
+        change1h: dx.priceChange && dx.priceChange.h1,
+        change6h: dx.priceChange && dx.priceChange.h6,
+        change24h: dx.priceChange && dx.priceChange.h24,
+        marketCap: dx.marketCap || dx.fdv,
+        fdv: dx.fdv,
+        volume24h: dx.volume && dx.volume.h24,
+        liquidityUsd: dx.liquidity && dx.liquidity.usd,
         buys24h: tx && tx.buys,
         sells24h: tx && tx.sells,
-        createdAt: created ? new Date(created).toISOString() : (coin && coin.launchedAt),
-        stockLockedUnits: coin && coin.stockLockedUnits,
-        stockLockedUsd: coin && coin.stockLockedUsd,
+        createdAt: created ? new Date(created).toISOString() : null,
+        stockLockedUnits: lock.stockLockedUnits,
+        stockLockedUsd: lock.stockLockedUsd,
         holders,
-        lockedForever: coin && coin.lockedForever,
-        lpFeePct: coin && coin.lpFeePct,
-        logo,
-        logoDetail: (coin && coin.logoDetail) ? ("https://memefimarketcap.com/" + coin.logoDetail) : logo,
-        imageUri: ipfs(coin && coin.imageUri),
+        logo: null,
+        logoDetail: null,
+        imageUri: null,
         dexImage: info.imageUrl || null,
         banner: info.header || null,
         socials: collectSocials(dxpack && dxpack.all),
-        dexUrl: dx && dx.url,
-        chain: (dx && dx.chainId) || "robinhood"
+        dexUrl: dx.url,
+        chain: dx.chainId || "robinhood"
       },
       stock: stock && {
         symbol: stock.symbol,
         name: stock.name,
         address: stock.address,
-        onchain: stock.price || null,
-        totalSupply: stock.totalSupply
+        onchain: wrapPx,
+        totalSupply: null
       },
       cash
     });
