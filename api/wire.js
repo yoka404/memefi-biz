@@ -12,6 +12,7 @@ const FEEDS = [
   { source: "DL News", url: "https://www.dlnews.com/arc/outboundfeeds/rss/" },
   { source: "Bankless", url: "https://www.bankless.com/feed" },
   { source: "BeInCrypto", url: "https://beincrypto.com/feed/" },
+  { source: "Cointribune", url: "https://www.cointribune.com/en/feed/" },
   { source: "RH tape", url: "https://news.google.com/rss/search?q=Robinhood+Chain+OR+%22tokenized+stocks%22+OR+memefi+OR+%22meme+stock%22+OR+%22Vlad+Tenev%22+OR+%22stock-paired%22&hl=en-US&gl=US&ceid=US:en" },
   { source: "Meme tape", url: "https://news.google.com/rss/search?q=%22Robinhood+Chain%22+OR+%22stock-paired%22+OR+BONER+OR+%22Artificial+Inu%22&hl=en-US&gl=US&ceid=US:en" }
 ];
@@ -91,12 +92,14 @@ function pickImage(chunk) {
 function articleUrl(chunk, link) {
   const raw = decode(chunk || "");
   const item = String(link || "").trim();
-  if (/news\.google\.com\/rss\/articles\//.test(item)) return item;
   const urls = raw.match(/https?:\/\/[^\s"'<>]+/g) || [];
+  const pub = urls.find((u) => !/news\.google|google\.com\/rss|google\.com\/url/.test(u) && !isHome(u));
+  if (pub) return pub.replace(/[.,)]+$/, "");
+  const src = raw.match(/<source[^>]+url=["']([^"']+)["']/i);
+  if (src && src[1] && !isHome(src[1])) return decode(src[1]);
+  if (item && !/news\.google/.test(item) && !isHome(item)) return item;
   const g = urls.find((u) => /news\.google\.com\/rss\/articles\//.test(u));
   if (g) return g.replace(/[.,)]+$/, "");
-  const deep = urls.find((u) => !/news\.google|google\.com\/rss/.test(u) && !isHome(u));
-  if (deep) return deep.replace(/[.,)]+$/, "");
   if (item && !isHome(item)) return item;
   return item || null;
 }
@@ -148,7 +151,7 @@ function parseFeed(xml, fallbackSource) {
       const alt = chunk.match(/<link[^>]+href="([^"]+)"/i);
       if (alt) link = alt[1];
     }
-    const descRaw = tag(chunk, "description");
+    const descRaw = tag(chunk, "description") + " " + tag(chunk, "content:encoded");
     const url = articleUrl(descRaw + " " + chunk, link);
     if (!title || !url || isHome(url)) continue;
     let sourceName = strip(tag(chunk, "source")) || fallbackSource;
@@ -164,7 +167,7 @@ function parseFeed(xml, fallbackSource) {
       title,
       blurb,
       url,
-      image: pickImage(chunk),
+      image: pickImage(chunk + descRaw),
       published: strip(tag(chunk, "pubDate")) || strip(tag(chunk, "dc:date")),
       score: score(title, blurb, sourceName + " " + fallbackSource)
     });
@@ -177,7 +180,7 @@ async function pull(feed) {
   try {
     const r = await fetch(feed.url, {
       signal: ctrl.signal,
-      headers: { "User-Agent": "memefi.biz wire/1.9", Accept: "application/rss+xml, application/xml, text/xml" }
+      headers: { "User-Agent": "memefi.biz wire/2.0", Accept: "application/rss+xml, application/xml, text/xml" }
     });
     if (!r.ok) return [];
     return parseFeed(await r.text(), feed.source);
@@ -190,7 +193,7 @@ async function pull(feed) {
 async function ogImage(url) {
   if (!url || /news\.google|x\.com|twitter\.com/.test(url) || isHome(url)) return null;
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 2200);
+  const t = setTimeout(() => ctrl.abort(), 4000);
   try {
     const r = await fetch(url, {
       signal: ctrl.signal,
@@ -199,7 +202,9 @@ async function ogImage(url) {
     });
     if (!r.ok) return null;
     const html = await r.text();
-    const og = html.match(/property=["']og:image["'][^>]*content=["']([^"']+)["']/i) || html.match(/content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+    const og = html.match(/property=["']og:image(?::secure_url)?["'][^>]*content=["']([^"']+)["']/i)
+      || html.match(/content=["']([^"']+)["'][^>]*property=["']og:image(?::secure_url)?["']/i)
+      || html.match(/name=["']twitter:image(?::src)?["'][^>]*content=["']([^"']+)["']/i);
     const img = og && og[1];
     return img && !badImage(img) ? img : null;
   } catch (e) {
@@ -227,7 +232,7 @@ export default async function handler(req, res) {
   const mixed = (tweets || []).concat(bags.flat()).filter(keep);
   mixed.sort((a, b) => when(b) - when(a) || b.score - a.score);
   const out = (mixed.length ? mixed : FALLBACK).slice(0, 24);
-  await Promise.all(out.slice(0, 12).map(async (it) => {
+  await Promise.all(out.slice(0, 16).map(async (it) => {
     if (it.image && !badImage(it.image)) return;
     it.image = await ogImage(it.url);
   }));
