@@ -13,7 +13,7 @@ const FEEDS = [
   { source: "Bankless", url: "https://www.bankless.com/feed" },
   { source: "BeInCrypto", url: "https://beincrypto.com/feed/" },
   { source: "RH tape", url: "https://news.google.com/rss/search?q=Robinhood+Chain+OR+%22tokenized+stocks%22+OR+memefi+OR+%22meme+stock%22+OR+%22Vlad+Tenev%22+OR+%22stock-paired%22&hl=en-US&gl=US&ceid=US:en" },
-  { source: "Meme tape", url: "https://news.google.com/rss/search?q=%22Robinhood+Chain%22+OR+Pons+OR+%22pair.fund%22+OR+%22long.xyz%22+OR+BONER+OR+%22Golden+Goose%22&hl=en-US&gl=US&ceid=US:en" }
+  { source: "Meme tape", url: "https://news.google.com/rss/search?q=%22Robinhood+Chain%22+OR+%22stock-paired%22+OR+BONER+OR+%22Artificial+Inu%22&hl=en-US&gl=US&ceid=US:en" }
 ];
 
 const FALLBACK = [
@@ -69,6 +69,8 @@ function junkDesk(title, desc, source, url) {
   if (/price prediction|how to buy|how to identify early|which token tugs|tugs at your/.test(t)) return true;
   if (/\bvs\b/.test(t) && /token|coin|pons|stonk/.test(t) && !/tokenized stock|stock-paired/.test(t)) return true;
   if (/yellow\.com|coingecko|coinmarketcap|coinranking|livecoinwatch/.test(t)) return true;
+  if (/athlon|zappos|sneaker|on sale for|sparkly|licensing push|hms victory|brands untapped/.test(t)) return true;
+  if (/about .+ robinhood token/.test(t)) return true;
   return false;
 }
 function badImage(url) {
@@ -107,7 +109,8 @@ function onDesk(title, desc, source, url) {
   if (/\brobinhood\b|\bhood\b|vlad tenev|\btenev\b/.test(t) && /token|chain|stock|meme|bridge|dex|volume|rwa/.test(t)) return true;
   if (/stock[- ]paired|tokenized stock|tokenised stock|stock token|meme stock/.test(t) && /robinhood|meme|chain|pair|pons|wrapper/.test(t)) return true;
   if (/bridg(e|ed|ing).{0,40}(robinhood|hood chain)|robinhood.{0,40}bridg/.test(t)) return true;
-  if (/\b(boner|golden goose|artificial inu|money mushroom)\b/.test(t)) return true;
+  if (/\b(boner|artificial inu|money mushroom)\b/.test(t)) return true;
+  if (/golden goose/.test(t) && /token|meme|robinhood|gld|pons|\$gg\b/.test(t)) return true;
   if (/\b(long\.xyz|pair\.fund|airlock|doppler|o1\.exchange)\b/.test(t)) return true;
   if (/\b(amc|nvda|hims|gld|slv|gme|mstr|tsla|spy)\b/.test(t) && /token|meme|robinhood|paired|wrapper|pool/.test(t)) return true;
   return false;
@@ -174,7 +177,7 @@ async function pull(feed) {
   try {
     const r = await fetch(feed.url, {
       signal: ctrl.signal,
-      headers: { "User-Agent": "memefi.biz wire/1.8", Accept: "application/rss+xml, application/xml, text/xml" }
+      headers: { "User-Agent": "memefi.biz wire/1.9", Accept: "application/rss+xml, application/xml, text/xml" }
     });
     if (!r.ok) return [];
     return parseFeed(await r.text(), feed.source);
