@@ -63,6 +63,14 @@ function junkText(s) {
   const t = String(s || "");
   return /href\s*=|<a\s|news\.google|<font|<html|<|>/i.test(t);
 }
+function junkDesk(title, desc, source, url) {
+  const t = (title + " " + desc + " " + source + " " + url).toLowerCase();
+  if (/live chart|live price|price index|price today|current price|token price|coin price \|/.test(t)) return true;
+  if (/price prediction|how to buy|how to identify early|which token tugs|tugs at your/.test(t)) return true;
+  if (/\bvs\b/.test(t) && /token|coin|pons|stonk/.test(t) && !/tokenized stock|stock-paired/.test(t)) return true;
+  if (/yellow\.com|coingecko|coinmarketcap|coinranking|livecoinwatch/.test(t)) return true;
+  return false;
+}
 function badImage(url) {
   const u = String(url || "").toLowerCase();
   if (!/^https?:/.test(u)) return true;
@@ -90,7 +98,8 @@ function articleUrl(chunk, link) {
   if (item && !isHome(item)) return item;
   return item || null;
 }
-function onDesk(title, desc, source) {
+function onDesk(title, desc, source, url) {
+  if (junkDesk(title, desc, source, url)) return false;
   const t = (title + " " + desc + " " + source).toLowerCase();
   if (/coinbase|base network|on base\b|bitwise|hayden adams|solana only/.test(t) && !/robinhood/.test(t)) return false;
   if (/\bmemefi\b|meme\.fi|memefi\.biz/.test(t)) return true;
@@ -98,8 +107,8 @@ function onDesk(title, desc, source) {
   if (/\brobinhood\b|\bhood\b|vlad tenev|\btenev\b/.test(t) && /token|chain|stock|meme|bridge|dex|volume|rwa/.test(t)) return true;
   if (/stock[- ]paired|tokenized stock|tokenised stock|stock token|meme stock/.test(t) && /robinhood|meme|chain|pair|pons|wrapper/.test(t)) return true;
   if (/bridg(e|ed|ing).{0,40}(robinhood|hood chain)|robinhood.{0,40}bridg/.test(t)) return true;
-  if (/\b(boner|golden goose|\bgg\b|artificial inu|\bai\/nvda|money mushroom)\b/.test(t)) return true;
-  if (/\b(pons|long\.xyz|pair\.fund|airlock|doppler|o1\.exchange)\b/.test(t)) return true;
+  if (/\b(boner|golden goose|artificial inu|money mushroom)\b/.test(t)) return true;
+  if (/\b(long\.xyz|pair\.fund|airlock|doppler|o1\.exchange)\b/.test(t)) return true;
   if (/\b(amc|nvda|hims|gld|slv|gme|mstr|tsla|spy)\b/.test(t) && /token|meme|robinhood|paired|wrapper|pool/.test(t)) return true;
   return false;
 }
@@ -146,7 +155,7 @@ function parseFeed(xml, fallbackSource) {
       sourceName = split[2].trim() || sourceName;
     }
     const blurb = blurbOf(title, sourceName, descRaw);
-    if (!onDesk(title, blurb, sourceName + " " + fallbackSource)) continue;
+    if (!onDesk(title, blurb, sourceName + " " + fallbackSource, url)) continue;
     out.push({
       source: sourceName.replace(/ - Google News$/i, "") || fallbackSource,
       title,
@@ -165,7 +174,7 @@ async function pull(feed) {
   try {
     const r = await fetch(feed.url, {
       signal: ctrl.signal,
-      headers: { "User-Agent": "memefi.biz wire/1.7", Accept: "application/rss+xml, application/xml, text/xml" }
+      headers: { "User-Agent": "memefi.biz wire/1.8", Accept: "application/rss+xml, application/xml, text/xml" }
     });
     if (!r.ok) return [];
     return parseFeed(await r.text(), feed.source);
@@ -210,7 +219,7 @@ export default async function handler(req, res) {
     seen.add(key);
     if (!row.url || isHome(row.url)) return false;
     if (junkText(row.blurb) || junkText(row.title)) return false;
-    return onDesk(row.title, row.blurb, row.source);
+    return onDesk(row.title, row.blurb, row.source, row.url);
   }
   const mixed = (tweets || []).concat(bags.flat()).filter(keep);
   mixed.sort((a, b) => when(b) - when(a) || b.score - a.score);
