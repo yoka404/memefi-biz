@@ -1,4 +1,5 @@
-export const config = { maxDuration: 20 };
+export const config = { maxDuration: 25 };
+import { pullX } from "../lib/xwire.js";
 
 const FEEDS = [
   { source: "Decrypt", url: "https://decrypt.co/feed" },
@@ -155,7 +156,7 @@ async function pull(feed) {
   try {
     const r = await fetch(feed.url, {
       signal: ctrl.signal,
-      headers: { "User-Agent": "memefi.biz wire/1.5", Accept: "application/rss+xml, application/xml, text/xml" }
+      headers: { "User-Agent": "memefi.biz wire/1.6", Accept: "application/rss+xml, application/xml, text/xml" }
     });
     if (!r.ok) return [];
     return parseFeed(await r.text(), feed.source);
@@ -166,7 +167,7 @@ async function pull(feed) {
   }
 }
 async function ogImage(url) {
-  if (!url || /news\.google/.test(url) || isHome(url)) return null;
+  if (!url || /news\.google|x\.com|twitter\.com/.test(url) || isHome(url)) return null;
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 2200);
   try {
@@ -189,9 +190,12 @@ async function ogImage(url) {
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=180");
-  const bags = await Promise.all(FEEDS.map(pull));
+  const [bags, tweets] = await Promise.all([
+    Promise.all(FEEDS.map(pull)),
+    pullX().catch(() => [])
+  ]);
   const seen = new Set();
-  const mixed = bags.flat().filter((row) => {
+  const mixed = bags.flat().concat(tweets || []).filter((row) => {
     const key = (row.title || "").toLowerCase().slice(0, 80);
     if (!key || seen.has(key)) return false;
     seen.add(key);
