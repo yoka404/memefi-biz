@@ -11,9 +11,11 @@ const YAHOO = ["AMC","NVDA","HIMS","MU","MSTR","TSLA","HOOD","AAPL","GME","SPY",
 const PIN = "0x385f4f8ae47651ce5f58f5265395a669f8281e18".toLowerCase();
 const PIN_GG = "0xcacb0e9caccee63ec4d82952e561a291c68bcb68".toLowerCase();
 const PIN_BONER = "0x98096d17e191b3da1d5f99a6d7b3584351b11e18".toLowerCase();
-const PINS = new Set([PIN, PIN_GG, PIN_BONER]);
-const JUNK = /^(test|asdf|qwer|xxxx|zzzz|aaaa|abcd|foo|bar|xxx)/i;
-const TRUSTED = new Set(["long", "bankr", "feel", "flap", "pons"]);
+const PIN_AI = "0x2e8c31162b855a2ffa90f6f8634643ad6f111e18".toLowerCase();
+const PIN_ICOIN = "0x5d6ef090a1461b11c9427ac319260122d1c61e18".toLowerCase();
+const PINS = new Set([PIN, PIN_GG, PIN_BONER, PIN_AI, PIN_ICOIN]);
+const JUNK = /^(test|asdf|qwer|xxxx|zzzz|aaaa|abcd|foo|bar|xxx)$/i;
+const TRUSTED = new Set(["long", "bankr", "feel", "flap", "pons", "o1", "pair"]);
 const TAPE_FLOOR = 1e5;
 const MOVER_FLOOR = 3e6;
 
@@ -36,7 +38,7 @@ function looksScam(c) {
   const mcap = Number(c.marketCap);
   const liq = Number(c.liquidityUsd);
   const trusted = TRUSTED.has(padGroup(c.launchpad));
-  if (Number.isFinite(mcap) && mcap > 1e9) return true;
+  if (Number.isFinite(mcap) && mcap > 5e9) return true;
   if (Number.isFinite(liq) && liq > 0 && liq < 100 && Number.isFinite(mcap) && mcap > 1e6 && !trusted) return true;
   return false;
 }
@@ -141,6 +143,8 @@ export default async function handler(req, res) {
     if (!map[PIN]) map[PIN] = { ticker: "MEME", name: "A Meme Coin", address: PIN, pair: "AMC", launchpad: "long", listed: true };
     if (!map[PIN_GG]) map[PIN_GG] = { ticker: "GG", name: "Golden Goose", address: PIN_GG, pair: "GLD", launchpad: "pons", listed: true };
     if (!map[PIN_BONER]) map[PIN_BONER] = { ticker: "BONER", name: "Boner Coin", address: PIN_BONER, pair: "HIMS", launchpad: "long", listed: true };
+    if (!map[PIN_AI]) map[PIN_AI] = { ticker: "AI", name: "Artificial Inu", address: PIN_AI, pair: "NVDA", launchpad: "long", listed: true };
+    if (!map[PIN_ICOIN]) map[PIN_ICOIN] = { ticker: "ICOIN", name: "iCoin", address: PIN_ICOIN, pair: "AAPL", launchpad: "long", listed: true };
     const all = Object.values(map);
     const world = all.filter((c) => !looksScam(c));
     world.sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
