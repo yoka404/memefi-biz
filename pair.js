@@ -31,8 +31,7 @@ function fmtUsd(n) {
 function fmtChg(n) {
   const x = Number(n);
   if (!Number.isFinite(x)) return "—";
-  const sign = x >= 0 ? "+" : "";
-  return sign + x.toFixed(2) + "%";
+  return (x >= 0 ? "+" : "") + x.toFixed(2) + "%";
 }
 function prem(onchain, cash) {
   if (!Number.isFinite(onchain) || !Number.isFinite(cash) || cash <= 0) return null;
@@ -52,12 +51,32 @@ function labelKind(k) {
 }
 function padPretty(raw) {
   const s = String(raw || "").toLowerCase();
-  if (s.includes("pons")) return "Pons";
+  if (s === "pons-v3") return "Pons V3";
+  if (s === "pons-v2") return "Pons V2";
+  if (s === "pons-v1" || s === "pons") return "Pons V1";
   if (s.includes("long")) return "long.xyz";
   if (s.includes("bankr")) return "Bankr";
   if (s.includes("feel")) return "feel.cash";
   if (s.includes("flap")) return "Flap";
+  if (s === "o1") return "o1.exchange";
+  if (s === "pair") return "pair.fund";
   return raw || "dex";
+}
+function shortAddr(a) {
+  const s = String(a || "");
+  if (s.length < 12) return s;
+  return s.slice(0, 6) + "…" + s.slice(-4);
+}
+function copyBtn(value) {
+  if (!value) return "";
+  return '<button type="button" class="copy" data-copy="' + String(value).replace(/"/g, "") + '">Copy</button>';
+}
+function addrCell(value, href) {
+  if (!value) return "—";
+  const link = href
+    ? '<a href="' + href + '" target="_blank" rel="noopener"><code>' + shortAddr(value) + '</code></a>'
+    : '<code>' + shortAddr(value) + '</code>';
+  return '<div class="addr">' + link + copyBtn(value) + '</div>';
 }
 function setAvatar(img, urls) {
   const queue = urls.filter(Boolean);
@@ -104,13 +123,25 @@ function loadChart(poolId, address) {
   const src = pool
     ? "https://www.geckoterminal.com/robinhood/pools/" + encodeURIComponent(pool) + "?embed=1&info=0&swaps=0&light_chart=0&chart_type=price"
     : "https://www.geckoterminal.com/robinhood/tokens/" + encodeURIComponent(address) + "?embed=1&info=0&swaps=0&light_chart=0";
-  box.innerHTML = `<iframe title="GeckoTerminal chart" src="${src}" allow="clipboard-write" loading="lazy"></iframe>`;
+  box.innerHTML = '<iframe title="GeckoTerminal chart" src="' + src + '" allow="clipboard-write" loading="lazy"></iframe>';
 }
-function shortAddr(a) {
-  const s = String(a || "");
-  if (s.length < 12) return s;
-  return s.slice(0, 6) + "…" + s.slice(-4);
+async function copyText(value, btn) {
+  try {
+    await navigator.clipboard.writeText(value);
+    if (btn) {
+      const prev = btn.textContent;
+      btn.textContent = "Copied";
+      btn.classList.add("ok");
+      setTimeout(() => { btn.textContent = prev; btn.classList.remove("ok"); }, 1200);
+    }
+  } catch (e) {}
 }
+document.addEventListener("click", (e) => {
+  const btn = e.target && e.target.closest && e.target.closest("[data-copy]");
+  if (!btn) return;
+  e.preventDefault();
+  copyText(btn.getAttribute("data-copy"), btn.classList.contains("copy") ? btn : null);
+});
 
 async function main() {
   const address = addrFromPath();
@@ -135,17 +166,13 @@ async function main() {
   document.getElementById("pad").textContent = "robinhood · " + padPretty(c.launchpad);
   title.textContent = c.name || c.ticker;
   document.getElementById("chips").innerHTML =
-    `<span class="chip">$${c.ticker || ""}</span>` +
-    (c.pair ? `<span class="chip">quoted in ${c.pair}</span>` : "") +
-    `<span class="chip">${padPretty(c.launchpad)}</span>` +
-    `<a class="chip" href="${SCAN}/token/${c.address}" target="_blank" rel="noopener">${shortAddr(c.address)}</a>`;
+    '<span class="chip">$' + (c.ticker || "") + '</span>' +
+    (c.pair ? '<span class="chip">quoted in ' + c.pair + '</span>' : '') +
+    '<span class="chip">' + padPretty(c.launchpad) + '</span>' +
+    '<button type="button" class="chip copy" data-copy="' + c.address + '">' + shortAddr(c.address) + ' · copy</button>';
   document.getElementById("sub").textContent = equity
     ? "$" + c.ticker + " is quoted against tokenized " + c.pair + "."
     : "$" + c.ticker + " pool is quoted in " + (c.pair || "the paired asset") + ".";
-  const stamp = document.getElementById("live-stamp");
-  const liveText = document.getElementById("live-text");
-  if (liveText) liveText.textContent = "Live pair";
-  if (stamp) { stamp.classList.remove("waiting"); stamp.classList.add("on-air"); }
   setAvatar(document.getElementById("avatar"), [
     c.dexImage,
     "https://storage.long.xyz/tokens/" + c.address + ".png",
@@ -164,28 +191,28 @@ async function main() {
   }
   const links = (c.socials || []).map((row) => {
     const k = socialKind(row.type, row.url);
-    return `<a href="${row.url}" target="_blank" rel="noopener">${ICONS[k] || ""}${labelKind(k)}</a>`;
+    return '<a href="' + row.url + '" target="_blank" rel="noopener">' + (ICONS[k] || "") + labelKind(k) + '</a>';
   });
-  if (c.poolId) links.push(`<a href="https://www.geckoterminal.com/robinhood/pools/${c.poolId}" target="_blank" rel="noopener">${ICONS.website}GeckoTerminal</a>`);
-  else links.push(`<a href="https://www.geckoterminal.com/robinhood/tokens/${c.address}" target="_blank" rel="noopener">${ICONS.website}GeckoTerminal</a>`);
-  if (c.dexUrl) links.push(`<a href="${c.dexUrl}" target="_blank" rel="noopener">${ICONS.dex}DexScreener</a>`);
-  links.push(`<a href="${SCAN}/token/${c.address}" target="_blank" rel="noopener">${ICONS.dex}RH-scan</a>`);
+  if (c.poolId) links.push('<a href="https://www.geckoterminal.com/robinhood/pools/' + c.poolId + '" target="_blank" rel="noopener">' + ICONS.website + 'GeckoTerminal</a>');
+  else links.push('<a href="https://www.geckoterminal.com/robinhood/tokens/' + c.address + '" target="_blank" rel="noopener">' + ICONS.website + 'GeckoTerminal</a>');
+  if (c.dexUrl) links.push('<a href="' + c.dexUrl + '" target="_blank" rel="noopener">' + ICONS.dex + 'DexScreener</a>');
+  links.push('<a href="' + SCAN + '/token/' + c.address + '" target="_blank" rel="noopener">' + ICONS.dex + 'RH-scan</a>');
   document.getElementById("socials").innerHTML = links.join("");
   const chg = Number(c.change24h);
-  const chgHtml = Number.isFinite(chg) ? `<s class="${chg >= 0 ? "up" : "dn"}">${fmtChg(chg)}</s>` : "";
-  let pills = `
-    <div><em>Price</em><b>${fmtPx(c.price)}</b>${chgHtml}</div>
-    <div><em>Market cap</em><b>${fmtUsd(c.marketCap)}</b></div>
-    <div><em>FDV</em><b>${fmtUsd(c.fdv)}</b></div>
-    <div><em>Volume 24h</em><b>${fmtUsd(c.volume24h)}</b></div>
-    <div><em>Liquidity</em><b>${fmtUsd(c.liquidityUsd)}</b></div>`;
+  const chgHtml = Number.isFinite(chg) ? '<s class="' + (chg >= 0 ? "up" : "dn") + '">' + fmtChg(chg) + '</s>' : "";
+  let pills = '' +
+    '<div><em>Price</em><b>' + fmtPx(c.price) + '</b>' + chgHtml + '</div>' +
+    '<div><em>Market cap</em><b>' + fmtUsd(c.marketCap) + '</b></div>' +
+    '<div><em>FDV</em><b>' + fmtUsd(c.fdv) + '</b></div>' +
+    '<div><em>Volume 24h</em><b>' + fmtUsd(c.volume24h) + '</b></div>' +
+    '<div><em>Liquidity</em><b>' + fmtUsd(c.liquidityUsd) + '</b></div>';
   if (equity) {
-    pills += `
-    <div data-tip="Last on-chain print of the official wrapper."><em>${c.pair} on-chain</em><b>${wrap != null ? fmtPx(wrap) : "—"}</b></div>
-    <div data-tip="Last regular-session print on NYSE. Frozen on weekends and holidays."><em>Cash close</em><b>${cash != null ? fmtPx(cash) : "—"}</b></div>
-    <div data-tip="Wrapper / cash close − 1."><em>Premium</em><b>${p == null ? "n/a" : ((p > 0 ? "+" : "") + p.toFixed(1) + "%")}</b></div>`;
+    pills += '' +
+    '<div data-tip="Last on-chain print of the official wrapper."><em>' + c.pair + ' on-chain</em><b>' + (wrap != null ? fmtPx(wrap) : "—") + '</b></div>' +
+    '<div data-tip="Last regular-session print."><em>Cash close</em><b>' + (cash != null ? fmtPx(cash) : "—") + '</b></div>' +
+    '<div data-tip="Wrapper / cash close − 1."><em>Premium</em><b>' + (p == null ? "n/a" : ((p > 0 ? "+" : "") + p.toFixed(1) + "%")) + '</b></div>';
   } else {
-    pills += `<div><em>1h</em><b class="${Number(c.change1h) >= 0 ? "up" : "dn"}">${fmtChg(c.change1h)}</b></div>`;
+    pills += '<div><em>1h</em><b class="' + (Number(c.change1h) >= 0 ? "up" : "dn") + '">' + fmtChg(c.change1h) + '</b></div>';
   }
   document.getElementById("pills").innerHTML = pills;
   loadChart(c.poolId, c.address);
@@ -200,14 +227,14 @@ async function main() {
     ["Buys / sells 24h", (c.buys24h != null || c.sells24h != null) ? (c.buys24h || 0) + " / " + (c.sells24h || 0) : "—"],
     ["1h / 6h / 24h", [c.change1h, c.change6h, c.change24h].map(fmtChg).join(" · ")],
     ["Created", c.createdAt ? new Date(c.createdAt).toUTCString() : "—"],
-    ["Token", `<a href="${SCAN}/token/${c.address}" target="_blank" rel="noopener">${c.address}</a>`],
-    ["Pool", c.poolId ? `<a href="https://www.geckoterminal.com/robinhood/pools/${c.poolId}" target="_blank" rel="noopener">${c.poolId}</a>` : "—"]
+    ["Token", addrCell(c.address, SCAN + "/token/" + c.address)],
+    ["Pool", c.poolId ? addrCell(c.poolId, "https://www.geckoterminal.com/robinhood/pools/" + c.poolId) : "—"]
   ];
   if (equity) {
     rows.splice(2, 0, ["Paired stock", c.pair + (s && s.name ? " — " + s.name : "")]);
-    rows.push(["Asset locked", (c.stockLockedUnits != null ? Number(c.stockLockedUnits).toFixed(2) + " " + c.pair : "—") + " · " + fmtUsd(c.stockLockedUsd)]);
-    rows.push(["Stock token", s && s.address ? `<a href="${SCAN}/token/${s.address}" target="_blank" rel="noopener">${s.address}</a>` : "—"]);
+    rows.push(["Asset locked", (c.stockLockedUnits != null ? Number(c.stockLockedUnits).toLocaleString("en-US", { maximumFractionDigits: 2 }) + " " + c.pair : "—") + " · " + fmtUsd(c.stockLockedUsd)]);
+    rows.push(["Stock token", s && s.address ? addrCell(s.address, SCAN + "/token/" + s.address) : "—"]);
   }
-  document.getElementById("file").innerHTML = rows.map((row) => `<tr><th>${row[0]}</th><td>${row[1]}</td></tr>`).join("");
+  document.getElementById("file").innerHTML = rows.map((row) => '<tr><th>' + row[0] + '</th><td>' + row[1] + '</td></tr>').join("");
 }
 main();
