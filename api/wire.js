@@ -109,6 +109,10 @@ function score(title, desc, source) {
   if (/nft drop|airdrop claim|giveaway|sponsored/.test(t) && s < 5) s -= 4;
   return s;
 }
+function when(row) {
+  const t = Date.parse(row && row.published);
+  return Number.isFinite(t) ? t : 0;
+}
 function blurbOf(title, source, descRaw) {
   const text = strip(descRaw);
   if (!text || junkText(text)) return "";
@@ -144,7 +148,7 @@ function parseFeed(xml, fallbackSource) {
       blurb,
       url,
       image: pickImage(chunk),
-      published: strip(tag(chunk, "pubDate")),
+      published: strip(tag(chunk, "pubDate")) || strip(tag(chunk, "dc:date")),
       score: score(title, blurb, sourceName + " " + fallbackSource)
     });
   }
@@ -203,13 +207,12 @@ export default async function handler(req, res) {
     if (junkText(row.blurb) || junkText(row.title)) return false;
     return row.score >= 1;
   }
-  const xs = (tweets || []).filter(keep);
-  const news = bags.flat().filter(keep).sort((a, b) => b.score - a.score || ((b.image ? 1 : 0) - (a.image ? 1 : 0)));
-  const items = xs.concat(news).slice(0, 24);
-  const out = items.length ? items : FALLBACK;
+  const mixed = (tweets || []).concat(bags.flat()).filter(keep);
+  mixed.sort((a, b) => when(b) - when(a) || b.score - a.score);
+  const out = (mixed.length ? mixed : FALLBACK).slice(0, 24);
   await Promise.all(out.slice(0, 12).map(async (it) => {
     if (it.image && !badImage(it.image)) return;
     it.image = await ogImage(it.url);
   }));
-  res.status(200).json({ generated: new Date().toISOString(), items: out, x: xs.length });
+  res.status(200).json({ generated: new Date().toISOString(), items: out });
 }
