@@ -12,17 +12,13 @@ const FEEDS = [
   { source: "DL News", url: "https://www.dlnews.com/arc/outboundfeeds/rss/" },
   { source: "Bankless", url: "https://www.bankless.com/feed" },
   { source: "BeInCrypto", url: "https://beincrypto.com/feed/" },
-  { source: "Yahoo Finance", url: "https://finance.yahoo.com/news/rssindex" },
-  { source: "MarketWatch", url: "https://www.marketwatch.com/rss/topstories" },
-  { source: "RH tape", url: "https://news.google.com/rss/search?q=Robinhood+Chain+OR+%22tokenized+stocks%22+OR+%22stock+tokens%22+OR+memefi+OR+%22meme+stock%22&hl=en-US&gl=US&ceid=US:en" },
-  { source: "RWA desk", url: "https://news.google.com/rss/search?q=RWA+OR+%22real+world+assets%22+OR+tokenization+crypto+OR+xStocks&hl=en-US&gl=US&ceid=US:en" },
-  { source: "Meme tape", url: "https://news.google.com/rss/search?q=memecoin+OR+%22meme+coin%22+Robinhood+OR+Pons+OR+%22pair.fund%22&hl=en-US&gl=US&ceid=US:en" }
+  { source: "RH tape", url: "https://news.google.com/rss/search?q=Robinhood+Chain+OR+%22tokenized+stocks%22+OR+memefi+OR+%22meme+stock%22+OR+%22Vlad+Tenev%22+OR+%22stock-paired%22&hl=en-US&gl=US&ceid=US:en" },
+  { source: "Meme tape", url: "https://news.google.com/rss/search?q=%22Robinhood+Chain%22+OR+Pons+OR+%22pair.fund%22+OR+%22long.xyz%22+OR+BONER+OR+%22Golden+Goose%22&hl=en-US&gl=US&ceid=US:en" }
 ];
 
 const FALLBACK = [
-  { source: "Decrypt", title: "BONER absorbed more than half of tokenized HIMS over a closed session.", blurb: "The cash stock barely moved when the tape reopened.", url: "https://decrypt.co/377463/crypto-meme-coin-stock-pairs-robinhood", score: 9 },
-  { source: "Bankless", title: "Cornering the wrapper does not corner the listed share.", blurb: "Scale versus NYSE float remains the binding constraint.", url: "https://www.bankless.com/read/the-stock-paired-memecoin-squeeze-is-a-lie", score: 9 },
-  { source: "DefiPrime", title: "Quoted in Nvidia: the stock-paired memecoin boom, measured on-chain.", blurb: "AI/NVDA remains the deepest semiconductor pair.", url: "https://defiprime.com/stock-paired-memecoins", score: 8 }
+  { source: "Decrypt", title: "BONER absorbed more than half of tokenized HIMS over a closed session.", blurb: "The cash stock barely moved when the tape reopened.", url: "https://decrypt.co/377463/crypto-meme-coin-stock-pairs-robinhood", published: "2026-09-01T00:00:00Z", score: 9 },
+  { source: "Bankless", title: "Cornering the wrapper does not corner the listed share.", blurb: "Scale versus NYSE float remains the binding constraint.", url: "https://www.bankless.com/read/the-stock-paired-memecoin-squeeze-is-a-lie", published: "2026-09-01T00:00:00Z", score: 9 }
 ];
 
 const AMP = "\u0026amp;";
@@ -94,19 +90,27 @@ function articleUrl(chunk, link) {
   if (item && !isHome(item)) return item;
   return item || null;
 }
+function onDesk(title, desc, source) {
+  const t = (title + " " + desc + " " + source).toLowerCase();
+  if (/coinbase|base network|on base\b|bitwise|hayden adams|solana only/.test(t) && !/robinhood/.test(t)) return false;
+  if (/\bmemefi\b|meme\.fi|memefi\.biz/.test(t)) return true;
+  if (/robinhood chain|hood chain/.test(t)) return true;
+  if (/\brobinhood\b|\bhood\b|vlad tenev|\btenev\b/.test(t) && /token|chain|stock|meme|bridge|dex|volume|rwa/.test(t)) return true;
+  if (/stock[- ]paired|tokenized stock|tokenised stock|stock token|meme stock/.test(t) && /robinhood|meme|chain|pair|pons|wrapper/.test(t)) return true;
+  if (/bridg(e|ed|ing).{0,40}(robinhood|hood chain)|robinhood.{0,40}bridg/.test(t)) return true;
+  if (/\b(boner|golden goose|\bgg\b|artificial inu|\bai\/nvda|money mushroom)\b/.test(t)) return true;
+  if (/\b(pons|long\.xyz|pair\.fund|airlock|doppler|o1\.exchange)\b/.test(t)) return true;
+  if (/\b(amc|nvda|hims|gld|slv|gme|mstr|tsla|spy)\b/.test(t) && /token|meme|robinhood|paired|wrapper|pool/.test(t)) return true;
+  return false;
+}
 function score(title, desc, source) {
   const t = (title + " " + desc + " " + source).toLowerCase();
-  let s = 1;
-  if (/stock[- ]paired|tokenized stock|tokenised stock|stock token/.test(t)) s += 8;
-  if (/robinhood chain|tokenized (equity|share|etf|metal|gold|silver)/.test(t)) s += 6;
-  if (/\bmemefi\b|meme\.fi/.test(t)) s += 7;
-  if (/\b(nvda|amc|gld|slv|hood|hims|gme|mstr|tsla|spy)\b/.test(t)) s += 3;
-  if (/rwa|real[- ]world asset|tokeniz/.test(t)) s += 4;
-  if (/memecoin|meme coin|meme stock/.test(t)) s += 3;
-  if (/rumor|rumour|unconfirmed|sources say|reportedly|whisper|leak/.test(t)) s += 3;
-  if (/wrapper|premium|depeg|cash close|weekend/.test(t)) s += 3;
-  if (/bitcoin|ethereum|solana|crypto|defi|etf/.test(t)) s += 1;
-  if (/nft drop|airdrop claim|giveaway|sponsored/.test(t) && s < 5) s -= 4;
+  let s = 2;
+  if (/\bmemefi\b|meme\.fi/.test(t)) s += 6;
+  if (/robinhood chain/.test(t)) s += 5;
+  if (/stock[- ]paired|tokenized stock|meme stock/.test(t)) s += 4;
+  if (/bridge|dex volume|locked/.test(t)) s += 3;
+  if (/\b(nvda|amc|hims|gld|boner|tenev)\b/.test(t)) s += 2;
   return s;
 }
 function when(row) {
@@ -142,6 +146,7 @@ function parseFeed(xml, fallbackSource) {
       sourceName = split[2].trim() || sourceName;
     }
     const blurb = blurbOf(title, sourceName, descRaw);
+    if (!onDesk(title, blurb, sourceName + " " + fallbackSource)) continue;
     out.push({
       source: sourceName.replace(/ - Google News$/i, "") || fallbackSource,
       title,
@@ -160,7 +165,7 @@ async function pull(feed) {
   try {
     const r = await fetch(feed.url, {
       signal: ctrl.signal,
-      headers: { "User-Agent": "memefi.biz wire/1.6", Accept: "application/rss+xml, application/xml, text/xml" }
+      headers: { "User-Agent": "memefi.biz wire/1.7", Accept: "application/rss+xml, application/xml, text/xml" }
     });
     if (!r.ok) return [];
     return parseFeed(await r.text(), feed.source);
@@ -205,7 +210,7 @@ export default async function handler(req, res) {
     seen.add(key);
     if (!row.url || isHome(row.url)) return false;
     if (junkText(row.blurb) || junkText(row.title)) return false;
-    return row.score >= 1;
+    return onDesk(row.title, row.blurb, row.source);
   }
   const mixed = (tweets || []).concat(bags.flat()).filter(keep);
   mixed.sort((a, b) => when(b) - when(a) || b.score - a.score);
