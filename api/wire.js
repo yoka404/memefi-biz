@@ -1,4 +1,4 @@
-export const config = { maxDuration: 25 };
+export const config = { maxDuration: 30 };
 import { pullX } from "../lib/xwire.js";
 
 const FEEDS = [
@@ -180,7 +180,7 @@ async function pull(feed) {
   try {
     const r = await fetch(feed.url, {
       signal: ctrl.signal,
-      headers: { "User-Agent": "memefi.biz wire/2.0", Accept: "application/rss+xml, application/xml, text/xml" }
+      headers: { "User-Agent": "memefi.biz wire/2.1", Accept: "application/rss+xml, application/xml, text/xml" }
     });
     if (!r.ok) return [];
     return parseFeed(await r.text(), feed.source);
@@ -190,27 +190,56 @@ async function pull(feed) {
     clearTimeout(t);
   }
 }
-async function ogImage(url) {
-  if (!url || /news\.google|x\.com|twitter\.com/.test(url) || isHome(url)) return null;
+function grabOg(html) {
+  const og = String(html || "").match(/property=["']og:image(?::secure_url)?["'][^>]*content=["']([^"']+)["']/i)
+    || String(html || "").match(/content=["']([^"']+)["'][^>]*property=["']og:image(?::secure_url)?["']/i)
+    || String(html || "").match(/name=["']twitter:image(?::src)?["'][^>]*content=["']([^"']+)["']/i);
+  const img = og && og[1];
+  return img && !badImage(img) ? img : null;
+}
+async function readPage(url, ms) {
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 4000);
+  const t = setTimeout(() => ctrl.abort(), ms || 3500);
   try {
     const r = await fetch(url, {
       signal: ctrl.signal,
       headers: { "User-Agent": "Mozilla/5.0 memefi.biz", Accept: "text/html" },
       redirect: "follow"
     });
-    if (!r.ok) return null;
-    const html = await r.text();
-    const og = html.match(/property=["']og:image(?::secure_url)?["'][^>]*content=["']([^"']+)["']/i)
-      || html.match(/content=["']([^"']+)["'][^>]*property=["']og:image(?::secure_url)?["']/i)
-      || html.match(/name=["']twitter:image(?::src)?["'][^>]*content=["']([^"']+)["']/i);
-    const img = og && og[1];
-    return img && !badImage(img) ? img : null;
+    if (!r.ok) return { url, html: "" };
+    return { url: r.url || url, html: await r.text() };
   } catch (e) {
-    return null;
+    return { url, html: "" };
   } finally {
     clearTimeout(t);
+  }
+}
+async function publisherUrl(url) {
+  if (!url || !/news\.google/.test(url)) return url;
+  const page = await readPage(url, 2500);
+  if (page.url && !/news\.google/.test(page.url) && !isHome(page.url)) return page.url;
+  const hrefs = String(page.html).match(/https?:\/\/[^\s"'<>]+/g) || [];
+  const pub = hrefs.find((u) => !/google\.|gstatic|youtube|schema\.org/.test(u) && !isHome(u));
+  return pub || url;
+}
+async function ogImage(url) {
+  if (!url || /x\.com|twitter\.com/.test(url) || isHome(url)) return null;
+  const target = await publisherUrl(url);
+  const page = await readPage(target, 3500);
+  return grabOg(page.html);
+}
+async function fillImages(items) {
+  for (let i = 0; i < items.length; i += 6) {
+    const batch = items.slice(i, i + 6);
+    await Promise.all(batch.map(async (it) => {
+      if (it.image && !badImage(it.image)) return;
+      const img = await ogImage(it.url);
+      if (img) it.image = img;
+      if (/news\.google/.test(it.url || "")) {
+        const pub = await publisherUrl(it.url);
+        if (pub && pub !== it.url) it.url = pub;
+      }
+    }));
   }
 }
 
@@ -232,9 +261,6 @@ export default async function handler(req, res) {
   const mixed = (tweets || []).concat(bags.flat()).filter(keep);
   mixed.sort((a, b) => when(b) - when(a) || b.score - a.score);
   const out = (mixed.length ? mixed : FALLBACK).slice(0, 24);
-  await Promise.all(out.slice(0, 16).map(async (it) => {
-    if (it.image && !badImage(it.image)) return;
-    it.image = await ogImage(it.url);
-  }));
+  await fillImages(out);
   res.status(200).json({ generated: new Date().toISOString(), items: out });
 }
