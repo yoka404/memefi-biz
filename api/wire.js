@@ -189,25 +189,27 @@ async function ogImage(url) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=180");
+  res.setHeader("Cache-Control", "s-maxage=30, stale-while-revalidate=120");
   const [bags, tweets] = await Promise.all([
     Promise.all(FEEDS.map(pull)),
     pullX().catch(() => [])
   ]);
   const seen = new Set();
-  const mixed = bags.flat().concat(tweets || []).filter((row) => {
+  function keep(row) {
     const key = (row.title || "").toLowerCase().slice(0, 80);
     if (!key || seen.has(key)) return false;
     seen.add(key);
     if (!row.url || isHome(row.url)) return false;
     if (junkText(row.blurb) || junkText(row.title)) return false;
     return row.score >= 1;
-  });
-  mixed.sort((a, b) => b.score - a.score || ((b.image ? 1 : 0) - (a.image ? 1 : 0)));
-  const items = (mixed.length ? mixed : FALLBACK).slice(0, 24);
-  await Promise.all(items.slice(0, 12).map(async (it) => {
+  }
+  const xs = (tweets || []).filter(keep);
+  const news = bags.flat().filter(keep).sort((a, b) => b.score - a.score || ((b.image ? 1 : 0) - (a.image ? 1 : 0)));
+  const items = xs.concat(news).slice(0, 24);
+  const out = items.length ? items : FALLBACK;
+  await Promise.all(out.slice(0, 12).map(async (it) => {
     if (it.image && !badImage(it.image)) return;
     it.image = await ogImage(it.url);
   }));
-  res.status(200).json({ generated: new Date().toISOString(), items });
+  res.status(200).json({ generated: new Date().toISOString(), items: out, x: xs.length });
 }
