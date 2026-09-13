@@ -1,8 +1,8 @@
 function esc(s) {
   return String(s || '')
-    .split('\u0026').join('\u0026amp;')
-    .split('<').join('\u0026lt;')
-    .split('>').join('\u0026gt;');
+    .split('&').join('&amp;')
+    .split('<').join('&lt;')
+    .split('>').join('&gt;');
 }
 function letterSvg(label) {
   const t = String(label || '?').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase() || '?';
@@ -64,11 +64,9 @@ function row(c, right, sub) {
   const imgs = avatars(c);
   const src = imgs[0] || '';
   const alts = imgs.slice(1).join('|');
-  return '<li><a href="' + href + '"><img src="' + src + '" data-alts="' + alts + '" alt="" width="28" height="28" onerror="imgErr(this)"/><span><strong>' + esc(c.name || c.ticker) + '</strong> <em>' + esc(c.ticker || '') + ' / ' + esc(c.pair || '') + '</em></span><span class="r"><b>' + right + '</b><small class="' + klass + '">' + esc(extra) + '</small></span></a></li>';
+  return '<li><a href="' + href + '"><img src="' + src + '" data-alts="' + alts + '" alt="" width="28" height="28" onerror="imgErr(this)"/><span><strong>' + esc(c.name || c.ticker) + '</strong> <em>' + esc(c.ticker || '') + ' / ' + esc(c.pair || '') + '</em></span><span class="r"><b>' + right + '</b><small class="' + klass + '">' + extra + '</small></span></a></li>';
 }
 function paintUtil(util) {
-  const box = document.getElementById('snap-util');
-  if (box) box.innerHTML = '';
   const pctEl = document.getElementById('kpi-util');
   const subEl = document.getElementById('kpi-util-sub');
   if (!pctEl) return;
@@ -100,7 +98,7 @@ function paintSnapshot(s) {
   if (blk) {
     const label = s.headBlock ? ('Block ' + num(s.headBlock)) : 'Block';
     blk.innerHTML = '<i class="led" aria-hidden="true"></i><span>' + label + '</span>';
-    blk.setAttribute('data-tip', 'Robinhood Chain height at last refresh.');
+    blk.setAttribute('data-tip', 'Robinhood Chain height at last book.');
   }
   paintUtil(s.util);
   const movers = document.getElementById('snap-movers');
@@ -120,15 +118,5 @@ function paintSnapshot(s) {
     locked.innerHTML = html || '<li class="mute">No lock data</li>';
   }
 }
-async function bootSnap() {
-  try {
-    const r = await fetch('/api/board');
-    if (!r.ok) return;
-    const d = await r.json();
-    paintSnapshot(d.snapshot);
-  } catch (e) {}
-}
 window.paintSnapshot = paintSnapshot;
 window.imgErr = imgErr;
-bootSnap();
-setInterval(bootSnap, 60000);

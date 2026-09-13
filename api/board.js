@@ -3,9 +3,9 @@ import { buildUniverse } from "../lib/indexer.js";
 import { fillHolders } from "../lib/blockscout.js";
 import { fillPads } from "../lib/airlock.js";
 import { fillDex } from "../lib/dex.js";
-import { fillOnchainLocked } from "../lib/locked.js";
 import { padGroup } from "../lib/pads.js";
 import { tokenSupply, latestBlock } from "../lib/rpc.js";
+import { loadMfmc, mergeMfmc } from "../lib/mfmc.js";
 
 const YAHOO = ["AMC","NVDA","HIMS","MU","MSTR","TSLA","HOOD","AAPL","GME","SPY","MSFT","AMD","AMZN","META","GOOGL","NFLX","PLTR","INTC","BABA","COIN","RBLX","DJT","GLD","SLV","QQQ","IWM","COST","LLY","BB"];
 const PIN = "0x385f4f8ae47651ce5f58f5265395a669f8281e18".toLowerCase();
@@ -103,56 +103,75 @@ async function wrapperUtil(coins, onchain) {
   };
 }
 
-function buildSnapshot(uni, universe, tape, util, headBlock) {
-  const lockedUsd = universe.reduce((n, c) => n + (Number(c.stockLockedUsd) || 0), 0);
-  const lockedKnown = universe.filter((c) => Number(c.stockLockedUsd) > 0).length;
-  const vol = universe.reduce((n, c) => n + (Number(c.volume24h) || 0), 0);
-  const holders = universe.reduce((n, c) => n + (Number(c.holders) || 0), 0);
-  const pairs = new Set(universe.map((c) => c.pair).filter(Boolean));
-  const movers = tape
-    .filter((c) => Number.isFinite(Number(c.change24h)) && Number(c.marketCap) >= MOVER_FLOOR)
-    .sort((a, b) => Number(b.change24h) - Number(a.change24h))
-    .slice(0, 3)
-    .map(lite);
-  const locked = universe.filter((c) => Number(c.stockLockedUsd) > 0).sort((a, b) => Number(b.stockLockedUsd) - Number(a.stockLockedUsd)).slice(0, 3).map(lite);
+function buildSnapshot(book, util, movers, lockedLeaders, headBlock) {
   return {
-    stockLockedUsd: lockedUsd,
-    stockLockedKnown: lockedKnown,
-    coinsListed: universe.length,
-    launches: (uni && uni.coins && uni.coins.length) || universe.length,
-    equitiesPaired: pairs.size,
-    volume24h: vol,
-    holders: holders,
-    movers: movers,
-    locked: locked,
+    stockLockedUsd: book && Number.isFinite(book.stockLockedUsd) ? book.stockLockedUsd : null,
+    stockLockedKnown: book && book.stockLockedKnown,
+    coinsListed: book && book.coinsListed,
+    launches: book && book.launches,
+    equitiesPaired: book && book.equitiesPaired,
+    volume24h: book && book.volume24h,
+    fees24h: book && book.fees24h,
+    holders: book && book.holders,
+    movers: movers || [],
+    locked: lockedLeaders || [],
     util: util || null,
-    headBlock: headBlock || null
+    headBlock: (book && book.headBlock) || headBlock || null,
+    book: "mfmc-v4"
   };
 }
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "s-maxage=45, stale-while-revalidate=120");
   try {
-    const uni = await buildUniverse();
+    const [uni, book] = await Promise.all([
+      buildUniverse(),
+      loadMfmc().catch(() => null)
+    ]);
     const map = {};
     for (const c of (uni && uni.coins) || []) {
       const addr = String(c.address || "").toLowerCase();
       if (!addr) continue;
       map[addr] = Object.assign({}, c, { address: addr, listed: true });
     }
+    if (book) {
+      for (const c of book.coins || []) {
+        const addr = String(c.address || "").toLowerCase();
+        if (!addr) continue;
+        const row = {
+          ticker: c.ticker,
+          name: c.name,
+          address: addr,
+          poolId: c.poolId,
+          pair: c.pair,
+          launchpad: c.launchpad,
+          price: c.price,
+          marketCap: c.marketCap,
+          change24h: c.change24h,
+          volume24h: c.volume24h,
+          liquidityUsd: c.liquidityUsd,
+          stockLockedUsd: c.stockLockedUsd,
+          stockLockedUnits: c.stockLockedUnits,
+          holders: c.holders,
+          logo: c.logo,
+          createdAt: c.launchedAt,
+          listed: true
+        };
+        map[addr] = map[addr] ? mergeMfmc(map[addr], book) : row;
+      }
+    }
     if (!map[PIN]) map[PIN] = { ticker: "MEME", name: "A Meme Coin", address: PIN, pair: "AMC", launchpad: "long", listed: true };
     if (!map[PIN_GG]) map[PIN_GG] = { ticker: "GG", name: "Golden Goose", address: PIN_GG, pair: "GLD", launchpad: "pons", listed: true };
     if (!map[PIN_BONER]) map[PIN_BONER] = { ticker: "BONER", name: "Boner Coin", address: PIN_BONER, pair: "HIMS", launchpad: "long", listed: true };
     if (!map[PIN_AI]) map[PIN_AI] = { ticker: "AI", name: "Artificial Inu", address: PIN_AI, pair: "NVDA", launchpad: "long", listed: true };
     if (!map[PIN_ICOIN]) map[PIN_ICOIN] = { ticker: "ICOIN", name: "iCoin", address: PIN_ICOIN, pair: "AAPL", launchpad: "long", listed: true };
-    const all = Object.values(map);
+    const all = Object.values(map).map((c) => book ? mergeMfmc(c, book) : c);
     const world = all.filter((c) => !looksScam(c));
     world.sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
     await fillDex(world.slice(0, 200), 80);
     const onchain = (uni && uni.onchain) || {};
-    await fillOnchainLocked(world.slice(0, 32), onchain);
     const tape = world.filter(onTape).sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
-    await fillHolders(world.slice(0, 40), 16);
+    await fillHolders(tape.slice(0, 40), 16);
     await fillPads(tape.slice(0, 24), 24);
     tape.forEach((c, i) => { c.rank = i + 1; });
     const metals = tape.filter((c) => c.pair === "GLD" || c.pair === "SLV");
@@ -164,21 +183,36 @@ export default async function handler(req, res) {
         if (px != null) quotes[s] = px;
       } catch (e) {}
     }));
-    const util = await wrapperUtil(all, onchain);
-    const head = await latestBlock();
+    const bookCoins = book && book.coins ? book.coins : all;
+    const util = await wrapperUtil(bookCoins, onchain);
+    if (book && Number.isFinite(book.stockLockedUsd)) {
+      util.locked = book.stockLockedUsd;
+      if (util.aum > 0) util.pct = (util.locked / util.aum) * 100;
+    }
+    const head = (book && book.headBlock) || await latestBlock();
+    const movers = tape
+      .filter((c) => Number.isFinite(Number(c.change24h)) && Number(c.marketCap) >= MOVER_FLOOR)
+      .sort((a, b) => Number(b.change24h) - Number(a.change24h))
+      .slice(0, 3)
+      .map(lite);
+    const lockedLeaders = (bookCoins || [])
+      .filter((c) => Number(c.stockLockedUsd) > 0)
+      .sort((a, b) => Number(b.stockLockedUsd) - Number(a.stockLockedUsd))
+      .slice(0, 3)
+      .map(lite);
     res.status(200).json({
-      generated: uni && uni.generated,
-      source: "memefi-indexer+rpc",
+      generated: (book && book.generated) || (uni && uni.generated),
+      source: "mfmc-v4+indexer",
       wrappers: uni && uni.wrappers,
       aggregates: {
         coins: tape.length,
         listed: tape.length,
-        tracked: all.length,
-        launches: all.length,
+        tracked: book && book.coinsListed,
+        launches: book && book.launches,
         metals: metals.length,
-        volume24h: all.reduce((n, c) => n + (Number(c.volume24h) || 0), 0)
+        volume24h: book && book.volume24h
       },
-      snapshot: buildSnapshot(uni, all, tape, util, head),
+      snapshot: buildSnapshot(book, util, movers, lockedLeaders, head),
       quotes,
       onchain,
       logos: buildLogos((uni && uni.logos) || {}),
