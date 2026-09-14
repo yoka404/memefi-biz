@@ -18,6 +18,13 @@ const JUNK = /^(test|asdf|qwer|xxxx|zzzz|aaaa|abcd|foo|bar|xxx)$/i;
 const TRUSTED = new Set(["long", "bankr", "feel", "flap", "pons", "o1", "pair"]);
 const TAPE_FLOOR = 1e5;
 const MOVER_FLOOR = 3e6;
+const BAN_ADDR = new Set([
+  "0xcec185eb182c47d1ba1efc84e6959e18cd620be4",
+  "0x835f8dc4de4684ee10dd0fb1e1656b6e065ba104",
+  "0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+  "0x5fc5360d0400a0fd4f2af552add042d716f1d168"
+]);
+const BAN_TICK = /^(CBBTC|WBTC|BTC|WETH|ETH|USDG|USDC|USDT|USDE|DAI|USD)$/i;
 
 async function yahoo(symbol) {
   const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(symbol) + "?interval=1d&range=5d";
@@ -28,9 +35,26 @@ async function yahoo(symbol) {
   return Number.isFinite(Number(px)) ? Number(px) : null;
 }
 
+function isWrapper(c) {
+  if (!c) return true;
+  const addr = String(c.address || "").toLowerCase();
+  if (PINS.has(addr)) return false;
+  if (BAN_ADDR.has(addr)) return true;
+  const tick = String(c.ticker || "");
+  const name = String(c.name || "");
+  if (BAN_TICK.test(tick)) return true;
+  if (/wrapped btc|coinbase wrapped|wrapped bitcoin/i.test(name)) return true;
+  const px = Number(c.price);
+  const mcap = Number(c.marketCap);
+  if (px > 1000 && mcap > 1e8) return true;
+  if (px > 0.97 && px < 1.03 && mcap > 5e6) return true;
+  return false;
+}
+
 function looksScam(c) {
   if (!c) return true;
   if (PINS.has(c.address)) return false;
+  if (isWrapper(c)) return true;
   const tick = String(c.ticker || "");
   const name = String(c.name || "").replace(/\s+/g, "");
   if (JUNK.test(tick) || JUNK.test(name)) return true;
@@ -46,6 +70,7 @@ function looksScam(c) {
 function onTape(c) {
   if (!c) return false;
   if (PINS.has(c.address)) return true;
+  if (isWrapper(c) || looksScam(c)) return false;
   return Number(c.marketCap) >= TAPE_FLOOR;
 }
 
@@ -166,9 +191,10 @@ export default async function handler(req, res) {
     if (!map[PIN_AI]) map[PIN_AI] = { ticker: "AI", name: "Artificial Inu", address: PIN_AI, pair: "NVDA", launchpad: "long", listed: true };
     if (!map[PIN_ICOIN]) map[PIN_ICOIN] = { ticker: "ICOIN", name: "iCoin", address: PIN_ICOIN, pair: "AAPL", launchpad: "long", listed: true };
     const all = Object.values(map).map((c) => book ? mergeMfmc(c, book) : c);
-    const world = all.filter((c) => !looksScam(c));
+    let world = all.filter((c) => !looksScam(c) && !isWrapper(c));
     world.sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
     await fillDex(world.slice(0, 200), 80);
+    world = world.filter((c) => !looksScam(c) && !isWrapper(c));
     const onchain = (uni && uni.onchain) || {};
     const tape = world.filter(onTape).sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
     await fillHolders(tape.slice(0, 40), 16);
