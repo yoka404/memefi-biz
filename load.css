@@ -5,6 +5,10 @@
   70%{transform:scale(1);box-shadow:0 0 0 8px rgba(62,207,142,0)}
   100%{transform:scale(1);box-shadow:0 0 0 0 rgba(62,207,142,0)}
 }
+#boot{position:fixed;top:0;left:0;right:0;height:2px;z-index:80;background:#121217;pointer-events:none}
+#boot-fill{display:block;height:100%;width:8%;background:linear-gradient(90deg,#5b4dff,#8b6cff,#c4b5fd);box-shadow:0 0 12px rgba(139,108,255,.55);transition:width .28s ease}
+#boot.done #boot-fill{width:100%}
+#boot.out{opacity:0;transition:opacity .35s ease}
 .skel{display:inline-block;height:11px;border-radius:999px;background:linear-gradient(90deg,#121217 0%,#2a2438 42%,#121217 80%);background-size:200% 100%;animation:sheen 1.6s ease-in-out infinite;vertical-align:middle}
 .skel.lg{height:16px;width:58%}
 .skel.md{width:42%}
@@ -57,9 +61,11 @@ footer{text-transform:none;letter-spacing:.04em}
 .snap-list a{display:flex;align-items:center;gap:10px}
 .snap-list a > span:first-of-type{flex:1;min-width:0}
 .snap-list img{width:28px;height:28px;border-radius:50%;object-fit:cover;background:#16161c;flex:0 0 28px}
+.wire-card .shot img,.wire-card .shot .ph{pointer-events:none;user-select:none}
 @media(max-width:720px){
   .chart-frame{min-height:420px;height:62vh}
   .stock-logo{width:16px;height:16px;flex-basis:16px}
   .filters{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
+  .nav{padding-top:12px}
   .nav nav{overflow-x:auto}
 }
