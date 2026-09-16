@@ -1,3 +1,10 @@
+function isAssetUrl(url) {
+  const u = String(url || "").toLowerCase();
+  if (!/^https?:/.test(u)) return true;
+  if (/\.(jpg|jpeg|png|webp|gif|avif|svg|bmp|ico)(\?|#|$)/.test(u)) return true;
+  if (/format=(jpg|jpeg|png|webp|gif)/.test(u) && /twimg|cdn|image/.test(u)) return true;
+  return false;
+}
 function clean(s) {
   let t = String(s || "");
   for (let i = 0; i < 3; i++) {
@@ -43,21 +50,21 @@ function paintWire(items) {
   const track = document.getElementById("wire-track");
   const dots = document.getElementById("wire-dots");
   if (!track) return;
-  const list = (items || []).filter((it) => it && it.title && it.url).slice(0, 20);
+  const list = (items || []).filter((it) => it && it.title && it.url && !isAssetUrl(it.url)).slice(0, 20);
   if (!list.length) {
     track.innerHTML = '<article class="wire-card empty"><p>Wire is quiet.</p></article>';
     return;
   }
   track.innerHTML = list.map((it, i) => {
-    const href = String(it.url || "#").replace(/"/g, "");
+    const href = String(it.url || "").replace(/"/g, "");
     const img = String(it.image || "").replace(/"/g, "");
     const src = clean(it.source || "Wire");
     const title = clean(it.title || "");
     const blurb = okBlurb(clean(it.blurb || ""));
     const photo = goodImg(img)
-      ? '<img src="' + img + '" alt="" loading="' + (i ? "lazy" : "eager") + '" data-srcname="' + src.replace(/"/g, "") + '" onerror="failShot(this)"/>'
+      ? '<img src="' + img + '" alt="" draggable="false" loading="' + (i ? "lazy" : "eager") + '" data-srcname="' + src.replace(/"/g, "") + '" onerror="failShot(this)"/>'
       : cover(src);
-    return '<a class="wire-card" href="' + href + '" target="_blank" rel="noopener">' +
+    return '<a class="wire-card" href="' + href + '" target="_blank" rel="noopener noreferrer">' +
       '<div class="shot">' + photo + '</div>' +
       '<div class="copy"><em>' + src + '</em><strong>' + title + '</strong>' +
       (blurb ? '<span>' + blurb + '</span>' : '') +
@@ -94,20 +101,38 @@ async function loadCarousel() {
     if (!r.ok) return;
     const data = await r.json();
     paintWire(data.items || []);
-  } catch (e) {}
+    if (window.bootMark) window.bootMark("wire");
+  } catch (e) {
+    if (window.bootMark) window.bootMark("wire");
+  }
 }
 document.addEventListener("click", (e) => {
   const t = e.target;
   if (!t) return;
   if (t.id === "wire-prev" || (t.closest && t.closest("#wire-prev"))) {
     scrollToCard(Math.max(0, currentIndex() - 1));
+    return;
   }
   if (t.id === "wire-next" || (t.closest && t.closest("#wire-next"))) {
     const track = document.getElementById("wire-track");
     const max = track ? track.children.length - 1 : 0;
     scrollToCard(Math.min(max, currentIndex() + 1));
+    return;
   }
-  if (t.dataset && t.dataset.w != null) scrollToCard(Number(t.dataset.w));
+  if (t.dataset && t.dataset.w != null) {
+    scrollToCard(Number(t.dataset.w));
+    return;
+  }
+  const card = t.closest && t.closest("a.wire-card");
+  if (card) {
+    const href = card.getAttribute("href") || "";
+    if (!href || isAssetUrl(href) || href === "#") {
+      e.preventDefault();
+      return;
+    }
+    e.preventDefault();
+    window.open(href, "_blank", "noopener,noreferrer");
+  }
 });
 setTimeout(() => {
   const el = document.getElementById("wire-track");
