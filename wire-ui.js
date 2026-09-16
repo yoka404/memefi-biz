@@ -2,6 +2,7 @@ function isAssetUrl(url) {
   const u = String(url || "").toLowerCase();
   if (!/^https?:/.test(u)) return true;
   if (/\.(jpg|jpeg|png|webp|gif|avif|svg|bmp|ico)(\?|#|$)/.test(u)) return true;
+  if (/googleusercontent|gstatic\.com|ggpht\.com|google\.com\/s2\/favicons|twimg\.com\/profile/.test(u)) return true;
   if (/format=(jpg|jpeg|png|webp|gif)/.test(u) && /twimg|cdn|image/.test(u)) return true;
   return false;
 }
@@ -29,7 +30,7 @@ function hue(s) {
 function goodImg(url) {
   const u = String(url || "");
   if (!/^https?:/i.test(u)) return false;
-  if (/news\.google|gstatic|google\.com\/images|default-logo|og-banners\/home|favicon/i.test(u)) return false;
+  if (/news\.google|gstatic|googleusercontent|google\.com\/images|default-logo|og-banners\/home|favicon/i.test(u)) return false;
   return true;
 }
 function cover(src) {
