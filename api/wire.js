@@ -64,6 +64,7 @@ function isAsset(url) {
   const u = String(url || "").toLowerCase();
   if (!/^https?:/.test(u)) return true;
   if (/\.(jpg|jpeg|png|webp|gif|avif|svg|bmp|ico)(\?|#|$)/.test(u)) return true;
+  if (/googleusercontent|gstatic\.com|ggpht\.com|google\.com\/s2\/favicons|twimg\.com\/profile/.test(u)) return true;
   if (/format=(jpg|jpeg|png|webp|gif)/.test(u) && /twimg|cdn|image/.test(u)) return true;
   return false;
 }
@@ -84,7 +85,7 @@ function junkDesk(title, desc, source, url) {
 function badImage(url) {
   const u = String(url || "").toLowerCase();
   if (!/^https?:/.test(u)) return true;
-  if (/news\.google|google\.com\/images|gstatic\.com|googleusercontent\.com\/icon/.test(u)) return true;
+  if (/news\.google|google\.com\/images|gstatic\.com|googleusercontent/.test(u)) return true;
   if (/favicon|default-logo|og-banners\/home|\/logo\.|sprite|placeholder/.test(u)) return true;
   return false;
 }
@@ -99,6 +100,7 @@ function pickImage(chunk) {
 function articleUrl(chunk, link) {
   const raw = decode(chunk || "");
   const item = String(link || "").trim();
+  if (item && /news\.google\.com\/rss\/articles\//.test(item)) return item;
   const urls = (raw.match(/https?:\/\/[^\s"'<>]+/g) || []).map((u) => u.replace(/[.,)]+$/, ""));
   const pub = urls.find((u) => !/news\.google|google\.com\/rss|google\.com\/url/.test(u) && !isHome(u) && !isAsset(u));
   if (pub) return pub;
@@ -269,5 +271,6 @@ export default async function handler(req, res) {
   mixed.sort((a, b) => when(b) - when(a) || b.score - a.score);
   const out = (mixed.length ? mixed : FALLBACK).slice(0, 24);
   await fillImages(out);
-  res.status(200).json({ generated: new Date().toISOString(), items: out });
+  const items = out.filter((it) => it.url && !isAsset(it.url) && !isHome(it.url));
+  res.status(200).json({ generated: new Date().toISOString(), items });
 }
