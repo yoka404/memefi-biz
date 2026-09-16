@@ -75,6 +75,7 @@ function junkText(s) {
 }
 function junkDesk(title, desc, source, url) {
   const t = (title + " " + desc + " " + source + " " + url).toLowerCase();
+  if (/coingape/.test(t)) return true;
   if (/live chart|live price|price index|price today|current price|token price|coin price \|/.test(t)) return true;
   if (/price prediction|how to buy|how to identify early|which token tugs|tugs at your/.test(t)) return true;
   if (/\bvs\b/.test(t) && /token|coin|pons|stonk/.test(t) && !/tokenized stock|stock-paired/.test(t)) return true;
@@ -269,6 +270,7 @@ export default async function handler(req, res) {
     if (!key || seen.has(key)) return false;
     seen.add(key);
     if (!row.url || isHome(row.url) || isAsset(row.url)) return false;
+    if (/coingape/i.test(row.source || "") || /coingape\.com/i.test(row.url || "")) return false;
     if (junkText(row.blurb) || junkText(row.title)) return false;
     return onDesk(row.title, row.blurb, row.source, row.url);
   }
