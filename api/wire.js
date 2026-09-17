@@ -64,17 +64,21 @@ function isAsset(url) {
   const u = String(url || "").toLowerCase();
   if (!/^https?:/.test(u)) return true;
   if (/w3\.org|schema\.org|xmlns|\/2000\/svg/.test(u)) return true;
-  if (/\.(jpg|jpeg|png|webp|gif|avif|svg|bmp|ico|js|css|map|json|xml)(\?|#|$)/.test(u)) return true;
-  if (/googleusercontent|gstatic\.com|ggpht\.com|google\.com\/s2\/favicons|twimg\.com\/profile/.test(u)) return true;
+  if (/fonts\.googleapis|fonts\.gstatic|googleapis\.com|gstatic\.com/.test(u)) return true;
+  if (/\/(css|js|font|fonts|static)\b/.test(u)) return true;
+  if (/\.(jpg|jpeg|png|webp|gif|avif|svg|bmp|ico|js|css|map|json|xml|woff2?|ttf)(\?|#|$)/.test(u)) return true;
+  if (/googleusercontent|google\.com\/s2\/favicons|twimg\.com\/profile/.test(u)) return true;
   if (/google-analytics|googletagmanager|doubleclick|scorecardresearch|facebook\.net\/signals/.test(u)) return true;
-  if (/format=(jpg|jpeg|png|webp|gif)/.test(u) && /twimg|cdn|image/.test(u)) return true;
   return false;
 }
 function isArticleLink(url) {
   if (!url || isHome(url) || isAsset(url)) return false;
   try {
     const u = new URL(url);
-    if (!u.hostname || u.hostname === "w3.org" || u.hostname.endsWith(".w3.org")) return false;
+    const host = (u.hostname || "").replace(/^www\./, "");
+    if (!host) return false;
+    if (/gstatic|googleapis|google-analytics|googletagmanager|w3\.org|schema\.org|doubleclick/.test(host)) return false;
+    if (host.indexOf("fonts.") === 0) return false;
     return true;
   } catch (e) {
     return false;
@@ -98,7 +102,7 @@ function junkDesk(title, desc, source, url) {
 function badImage(url) {
   const u = String(url || "").toLowerCase();
   if (!/^https?:/.test(u)) return true;
-  if (/news\.google|google\.com\/images|gstatic\.com|googleusercontent/.test(u)) return true;
+  if (/news\.google|google\.com\/images|gstatic\.com|googleusercontent|googleapis/.test(u)) return true;
   if (/favicon|default-logo|og-banners\/home|\/logo\.|sprite|placeholder/.test(u)) return true;
   return false;
 }
@@ -118,7 +122,7 @@ function articleUrl(chunk, link) {
   const pub = urls.find((u) => isArticleLink(u) && !/news\.google|google\.com\/rss|google\.com\/url/.test(u));
   if (pub) return pub;
   const src = raw.match(/<source[^>]+url=["']([^"']+)["']/i);
-  if (src && src[1] && isArticleLink(decode(src[1]))) return decode(src[1]);
+  if (src && src[1] && isArticleLink(decode(src[1])) && !isHome(decode(src[1]))) return decode(src[1]);
   const g = urls.find((u) => /news\.google\.com\/rss\/articles\//.test(u) && isArticleLink(u));
   if (g) return g;
   return isArticleLink(item) ? item : null;
@@ -218,6 +222,7 @@ function grabOg(html) {
   return img && !badImage(img) ? img : null;
 }
 async function readPage(url, ms) {
+  if (!url || /news\.google/.test(url) || isAsset(url)) return { url, html: "" };
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), ms || 3500);
   try {
@@ -234,18 +239,9 @@ async function readPage(url, ms) {
     clearTimeout(t);
   }
 }
-async function publisherUrl(url) {
-  if (!url || !/news\.google/.test(url)) return url;
-  const page = await readPage(url, 2500);
-  if (page.url && !/news\.google/.test(page.url) && isArticleLink(page.url)) return page.url;
-  const hrefs = String(page.html).match(/https?:\/\/[^\s"'<>]+/g) || [];
-  const pub = hrefs.find((u) => isArticleLink(u) && !/google\.|gstatic|youtube|schema\.org|analytics|w3\.org/.test(u));
-  return pub || url;
-}
 async function ogImage(url) {
-  if (!url || /x\.com|twitter\.com/.test(url) || isHome(url)) return null;
-  const target = await publisherUrl(url);
-  const page = await readPage(target, 3500);
+  if (!url || /x\.com|twitter\.com|news\.google/.test(url) || isHome(url) || isAsset(url)) return null;
+  const page = await readPage(url, 3500);
   return grabOg(page.html);
 }
 async function fillImages(items) {
@@ -253,18 +249,15 @@ async function fillImages(items) {
     const batch = items.slice(i, i + 6);
     await Promise.all(batch.map(async (it) => {
       if (it.image && !badImage(it.image)) return;
+      if (/news\.google/.test(it.url || "")) return;
       const img = await ogImage(it.url);
       if (img) it.image = img;
-      if (/news\.google/.test(it.url || "")) {
-        const pub = await publisherUrl(it.url);
-        if (pub && pub !== it.url && isArticleLink(pub)) it.url = pub;
-      }
     }));
   }
 }
 
 export default async function handler(req, res) {
-  res.setHeader("Cache-Control", "s-maxage=30, stale-while-revalidate=120");
+  res.setHeader("Cache-Control", "s-maxage=20, stale-while-revalidate=60");
   const [bags, tweets] = await Promise.all([
     Promise.all(FEEDS.map(pull)),
     pullX().catch(() => [])
