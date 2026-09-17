@@ -9,11 +9,10 @@ import { loadMfmc, mergeMfmc } from "../lib/mfmc.js";
 
 const YAHOO = ["AMC","NVDA","HIMS","MU","MSTR","TSLA","HOOD","AAPL","GME","SPY","MSFT","AMD","AMZN","META","GOOGL","NFLX","PLTR","INTC","BABA","COIN","RBLX","DJT","GLD","SLV","QQQ","IWM","COST","LLY","BB"];
 const PIN = "0x385f4f8ae47651ce5f58f5265395a669f8281e18".toLowerCase();
-const PIN_GG = "0xcacb0e9caccee63ec4d82952e561a291c68bcb68".toLowerCase();
 const PIN_BONER = "0x98096d17e191b3da1d5f99a6d7b3584351b11e18".toLowerCase();
 const PIN_AI = "0x2e8c31162b855a2ffa90f6f8634643ad6f111e18".toLowerCase();
 const PIN_ICOIN = "0x5d6ef090a1461b11c9427ac319260122d1c61e18".toLowerCase();
-const PINS = new Set([PIN, PIN_GG, PIN_BONER, PIN_AI, PIN_ICOIN]);
+const PINS = new Set([PIN, PIN_BONER, PIN_AI, PIN_ICOIN]);
 const JUNK = /^(test|asdf|qwer|xxxx|zzzz|aaaa|abcd|foo|bar|xxx)$/i;
 const TRUSTED = new Set(["long", "bankr", "feel", "flap", "pons", "o1", "pair"]);
 const TAPE_FLOOR = 1e5;
@@ -22,9 +21,12 @@ const BAN_ADDR = new Set([
   "0xcec185eb182c47d1ba1efc84e6959e18cd620be4",
   "0x835f8dc4de4684ee10dd0fb1e1656b6e065ba104",
   "0x0bd7d308f8e1639fab988df18a8011f41eacad73",
-  "0x5fc5360d0400a0fd4f2af552add042d716f1d168"
+  "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+  "0xcacb0e9caccee63ec4d82952e561a291c68bcb68",
+  "0x73cfe72ab68530656e91b682572ec480c1c4faa4",
+  "0xd3c3f631c5073f485eec513f22dace416491fcba"
 ]);
-const BAN_TICK = /^(CBBTC|WBTC|BTC|WETH|ETH|USDG|USDC|USDT|USDE|DAI|USD)$/i;
+const BAN_TICK = /^(CBBTC|WBTC|BTC|WETH|ETH|USDG|USDC|USDT|USDE|DAI|USD|GG|GOOSE|GOLDENGOOSE)$/i;
 
 async function yahoo(symbol) {
   const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(symbol) + "?interval=1d&range=5d";
@@ -43,6 +45,7 @@ function isWrapper(c) {
   const tick = String(c.ticker || "");
   const name = String(c.name || "");
   if (BAN_TICK.test(tick)) return true;
+  if (/golden goose/i.test(name)) return true;
   if (/wrapped btc|coinbase wrapped|wrapped bitcoin/i.test(name)) return true;
   const px = Number(c.price);
   const mcap = Number(c.marketCap);
@@ -105,6 +108,11 @@ function lite(c) {
 async function wrapperUtil(coins, onchain) {
   const by = {};
   for (const c of coins || []) {
+    const addr = String(c.address || "").toLowerCase();
+    if (BAN_ADDR.has(addr)) continue;
+    const tick = String(c.ticker || "");
+    const name = String(c.name || "");
+    if (BAN_TICK.test(tick) || /golden goose/i.test(name)) continue;
     const sym = String(c.pair || "").toUpperCase();
     if (!sym) continue;
     if (!by[sym]) by[sym] = { symbol: sym, lockedUsd: 0, stockAddress: null };
@@ -156,13 +164,13 @@ export default async function handler(req, res) {
     const map = {};
     for (const c of (uni && uni.coins) || []) {
       const addr = String(c.address || "").toLowerCase();
-      if (!addr) continue;
+      if (!addr || BAN_ADDR.has(addr)) continue;
       map[addr] = Object.assign({}, c, { address: addr, listed: true });
     }
     if (book) {
       for (const c of book.coins || []) {
         const addr = String(c.address || "").toLowerCase();
-        if (!addr) continue;
+        if (!addr || BAN_ADDR.has(addr)) continue;
         const row = {
           ticker: c.ticker,
           name: c.name,
@@ -186,7 +194,6 @@ export default async function handler(req, res) {
       }
     }
     if (!map[PIN]) map[PIN] = { ticker: "MEME", name: "A Meme Coin", address: PIN, pair: "AMC", launchpad: "long", listed: true };
-    if (!map[PIN_GG]) map[PIN_GG] = { ticker: "GG", name: "Golden Goose", address: PIN_GG, pair: "GLD", launchpad: "pons", listed: true };
     if (!map[PIN_BONER]) map[PIN_BONER] = { ticker: "BONER", name: "Boner Coin", address: PIN_BONER, pair: "HIMS", launchpad: "long", listed: true };
     if (!map[PIN_AI]) map[PIN_AI] = { ticker: "AI", name: "Artificial Inu", address: PIN_AI, pair: "NVDA", launchpad: "long", listed: true };
     if (!map[PIN_ICOIN]) map[PIN_ICOIN] = { ticker: "ICOIN", name: "iCoin", address: PIN_ICOIN, pair: "AAPL", launchpad: "long", listed: true };
@@ -209,7 +216,10 @@ export default async function handler(req, res) {
         if (px != null) quotes[s] = px;
       } catch (e) {}
     }));
-    const bookCoins = book && book.coins ? book.coins : all;
+    const bookCoins = (book && book.coins ? book.coins : all).filter((c) => {
+      const addr = String(c.address || "").toLowerCase();
+      return !BAN_ADDR.has(addr) && !BAN_TICK.test(String(c.ticker || "")) && !/golden goose/i.test(String(c.name || ""));
+    });
     const util = await wrapperUtil(bookCoins, onchain);
     if (book && Number.isFinite(book.stockLockedUsd)) {
       util.locked = book.stockLockedUsd;
@@ -221,7 +231,7 @@ export default async function handler(req, res) {
       .sort((a, b) => Number(b.change24h) - Number(a.change24h))
       .slice(0, 3)
       .map(lite);
-    const lockedLeaders = (bookCoins || [])
+    const lockedLeaders = bookCoins
       .filter((c) => Number(c.stockLockedUsd) > 0)
       .sort((a, b) => Number(b.stockLockedUsd) - Number(a.stockLockedUsd))
       .slice(0, 3)
