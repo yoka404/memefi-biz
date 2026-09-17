@@ -2,8 +2,10 @@ function isAssetUrl(url) {
   const u = String(url || "").toLowerCase();
   if (!/^https?:/.test(u)) return true;
   if (/w3\.org|schema\.org|\/2000\/svg/.test(u)) return true;
-  if (/\.(jpg|jpeg|png|webp|gif|avif|svg|bmp|ico|js|css)(\?|#|$)/.test(u)) return true;
-  if (/googleusercontent|gstatic\.com|ggpht\.com|google\.com\/s2\/favicons|twimg\.com\/profile/.test(u)) return true;
+  if (/fonts\.googleapis|fonts\.gstatic|googleapis\.com|gstatic\.com/.test(u)) return true;
+  if (/\/(css|js|font|fonts)\b/.test(u)) return true;
+  if (/\.(jpg|jpeg|png|webp|gif|avif|svg|bmp|ico|js|css|woff2?)(\?|#|$)/.test(u)) return true;
+  if (/googleusercontent|google\.com\/s2\/favicons|twimg\.com\/profile/.test(u)) return true;
   if (/format=(jpg|jpeg|png|webp|gif)/.test(u) && /twimg|cdn|image/.test(u)) return true;
   return false;
 }
@@ -31,7 +33,7 @@ function hue(s) {
 function goodImg(url) {
   const u = String(url || "");
   if (!/^https?:/i.test(u)) return false;
-  if (/news\.google|gstatic|googleusercontent|google\.com\/images|default-logo|og-banners\/home|favicon|w3\.org/i.test(u)) return false;
+  if (/news\.google|gstatic|googleusercontent|googleapis|google\.com\/images|default-logo|og-banners\/home|favicon|w3\.org/i.test(u)) return false;
   return true;
 }
 function cover(src) {
