@@ -91,6 +91,7 @@ function junkText(s) {
 function junkDesk(title, desc, source, url) {
   const t = (title + " " + desc + " " + source + " " + url).toLowerCase();
   if (/coingape/.test(t)) return true;
+  if (/golden goose|goldengoose|thegoldengoose/.test(t)) return true;
   if (/live chart|live price|price index|price today|current price|token price|coin price \|/.test(t)) return true;
   if (/price prediction|how to buy|how to identify early|which token tugs|tugs at your/.test(t)) return true;
   if (/\bvs\b/.test(t) && /token|coin|pons|stonk/.test(t) && !/tokenized stock|stock-paired/.test(t)) return true;
@@ -137,7 +138,6 @@ function onDesk(title, desc, source, url) {
   if (/stock[- ]paired|tokenized stock|tokenised stock|stock token|meme stock/.test(t) && /robinhood|meme|chain|pair|pons|wrapper/.test(t)) return true;
   if (/bridg(e|ed|ing).{0,40}(robinhood|hood chain)|robinhood.{0,40}bridg/.test(t)) return true;
   if (/\b(boner|artificial inu|money mushroom)\b/.test(t)) return true;
-  if (/golden goose/.test(t) && /token|meme|robinhood|gld|pons|\$gg\b/.test(t)) return true;
   if (/\b(long\.xyz|pair\.fund|airlock|doppler|o1\.exchange)\b/.test(t)) return true;
   if (/\b(amc|nvda|hims|gld|slv|gme|mstr|tsla|spy)\b/.test(t) && /token|meme|robinhood|paired|wrapper|pool/.test(t)) return true;
   return false;
