@@ -63,11 +63,22 @@ function isHome(url) {
 function isAsset(url) {
   const u = String(url || "").toLowerCase();
   if (!/^https?:/.test(u)) return true;
+  if (/w3\.org|schema\.org|xmlns|\/2000\/svg/.test(u)) return true;
   if (/\.(jpg|jpeg|png|webp|gif|avif|svg|bmp|ico|js|css|map|json|xml)(\?|#|$)/.test(u)) return true;
   if (/googleusercontent|gstatic\.com|ggpht\.com|google\.com\/s2\/favicons|twimg\.com\/profile/.test(u)) return true;
   if (/google-analytics|googletagmanager|doubleclick|scorecardresearch|facebook\.net\/signals/.test(u)) return true;
   if (/format=(jpg|jpeg|png|webp|gif)/.test(u) && /twimg|cdn|image/.test(u)) return true;
   return false;
+}
+function isArticleLink(url) {
+  if (!url || isHome(url) || isAsset(url)) return false;
+  try {
+    const u = new URL(url);
+    if (!u.hostname || u.hostname === "w3.org" || u.hostname.endsWith(".w3.org")) return false;
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 function junkText(s) {
   const t = String(s || "");
@@ -100,19 +111,17 @@ function pickImage(chunk) {
   return hits.find((u) => !badImage(u)) || null;
 }
 function articleUrl(chunk, link) {
-  const raw = decode(chunk || "");
   const item = String(link || "").trim();
-  if (item && /news\.google\.com\/rss\/articles\//.test(item)) return item;
+  if (isArticleLink(item)) return item;
+  const raw = decode(chunk || "");
   const urls = (raw.match(/https?:\/\/[^\s"'<>]+/g) || []).map((u) => u.replace(/[.,)]+$/, ""));
-  const pub = urls.find((u) => !/news\.google|google\.com\/rss|google\.com\/url/.test(u) && !isHome(u) && !isAsset(u));
+  const pub = urls.find((u) => isArticleLink(u) && !/news\.google|google\.com\/rss|google\.com\/url/.test(u));
   if (pub) return pub;
   const src = raw.match(/<source[^>]+url=["']([^"']+)["']/i);
-  if (src && src[1] && !isHome(src[1]) && !isAsset(src[1])) return decode(src[1]);
-  if (item && !/news\.google/.test(item) && !isHome(item) && !isAsset(item)) return item;
-  const g = urls.find((u) => /news\.google\.com\/rss\/articles\//.test(u) && !isAsset(u));
+  if (src && src[1] && isArticleLink(decode(src[1]))) return decode(src[1]);
+  const g = urls.find((u) => /news\.google\.com\/rss\/articles\//.test(u) && isArticleLink(u));
   if (g) return g;
-  if (item && !isHome(item) && !isAsset(item)) return item;
-  return null;
+  return isArticleLink(item) ? item : null;
 }
 function onDesk(title, desc, source, url) {
   if (junkDesk(title, desc, source, url)) return false;
@@ -157,14 +166,14 @@ function parseFeed(xml, fallbackSource) {
   const chunks = String(xml).split(/<item[\s>]/i).slice(1);
   for (const chunk of chunks) {
     let title = strip(tag(chunk, "title"));
-    let link = strip(tag(chunk, "link"));
+    let link = decode(tag(chunk, "link")).replace(/<[^>]*>/g, "").trim();
     if (!link) {
       const alt = chunk.match(/<link[^>]+href="([^"]+)"/i);
-      if (alt) link = alt[1];
+      if (alt) link = decode(alt[1]).trim();
     }
     const descRaw = tag(chunk, "description") + " " + tag(chunk, "content:encoded");
     const url = articleUrl(descRaw + " " + chunk, link);
-    if (!title || !url || isHome(url) || isAsset(url)) continue;
+    if (!title || !isArticleLink(url)) continue;
     let sourceName = strip(tag(chunk, "source")) || fallbackSource;
     const split = title.match(/^(.*)\s[-|\u2013]\s([^\-]{2,40})$/);
     if (split && /google|tape|desk/i.test(fallbackSource)) {
@@ -228,13 +237,9 @@ async function readPage(url, ms) {
 async function publisherUrl(url) {
   if (!url || !/news\.google/.test(url)) return url;
   const page = await readPage(url, 2500);
-  if (page.url && !/news\.google/.test(page.url) && !isHome(page.url) && !isAsset(page.url)) return page.url;
+  if (page.url && !/news\.google/.test(page.url) && isArticleLink(page.url)) return page.url;
   const hrefs = String(page.html).match(/https?:\/\/[^\s"'<>]+/g) || [];
-  const pub = hrefs.find((u) => {
-    if (/google\.|gstatic|youtube|schema\.org|analytics/.test(u)) return false;
-    if (isHome(u) || isAsset(u)) return false;
-    try { return new URL(u).pathname.split("/").filter(Boolean).length >= 2; } catch (e) { return false; }
-  });
+  const pub = hrefs.find((u) => isArticleLink(u) && !/google\.|gstatic|youtube|schema\.org|analytics|w3\.org/.test(u));
   return pub || url;
 }
 async function ogImage(url) {
@@ -252,7 +257,7 @@ async function fillImages(items) {
       if (img) it.image = img;
       if (/news\.google/.test(it.url || "")) {
         const pub = await publisherUrl(it.url);
-        if (pub && pub !== it.url && !isAsset(pub)) it.url = pub;
+        if (pub && pub !== it.url && isArticleLink(pub)) it.url = pub;
       }
     }));
   }
@@ -269,7 +274,7 @@ export default async function handler(req, res) {
     const key = (row.title || "").toLowerCase().slice(0, 80);
     if (!key || seen.has(key)) return false;
     seen.add(key);
-    if (!row.url || isHome(row.url) || isAsset(row.url)) return false;
+    if (!isArticleLink(row.url)) return false;
     if (/coingape/i.test(row.source || "") || /coingape\.com/i.test(row.url || "")) return false;
     if (junkText(row.blurb) || junkText(row.title)) return false;
     return onDesk(row.title, row.blurb, row.source, row.url);
@@ -278,6 +283,6 @@ export default async function handler(req, res) {
   mixed.sort((a, b) => when(b) - when(a) || b.score - a.score);
   const out = (mixed.length ? mixed : FALLBACK).slice(0, 24);
   await fillImages(out);
-  const items = out.filter((it) => it.url && !isAsset(it.url) && !isHome(it.url));
+  const items = out.filter((it) => isArticleLink(it.url));
   res.status(200).json({ generated: new Date().toISOString(), items });
 }
