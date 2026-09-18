@@ -1,15 +1,29 @@
 export const config = { maxDuration: 30 };
 import { tokenHolders } from "../lib/blockscout.js";
+import { fillPads } from "../lib/airlock.js";
+import { loadMfmc, mergeMfmc } from "../lib/mfmc.js";
+import { padGroup } from "../lib/pads.js";
 const METALS = new Set(["GLD","SLV"]);
 
-function padNorm(raw) {
-  const s = String(raw || "").toLowerCase();
+function padFromDex(id) {
+  const s = String(id || "").toLowerCase();
+  if (!s) return null;
+  if (/uniswap|univ3|univ4|uni-v/.test(s)) return null;
   if (s.includes("pons")) return "pons";
   if (s.includes("long") || s.includes("doppler") || s.includes("airlock")) return "long";
   if (s.includes("bankr")) return "bankr";
   if (s.includes("feel")) return "feel";
   if (s.includes("flap")) return "flap";
-  return raw || "dex";
+  if (s.includes("o1") || s.includes("swapx")) return "o1";
+  if (s.includes("pair")) return "pair";
+  return null;
+}
+
+function cleanPad(raw) {
+  const s = String(raw || "").toLowerCase();
+  if (!s || /uniswap|univ3|univ4|uni-v|unknown|other|dex/.test(s)) return "unknown";
+  if (padGroup(s) === "other") return "unknown";
+  return raw;
 }
 
 async function yahoo(symbol) {
@@ -146,45 +160,53 @@ export default async function handler(req, res) {
     const lock = lockedFrom(dx, quote);
     const created = dx.pairCreatedAt;
     const tx = dx.txns && (dx.txns.h24 || dx.txns.h6);
-    const holders = await tokenHolders(address);
+    const [holders, book] = await Promise.all([
+      tokenHolders(address),
+      loadMfmc().catch(() => null)
+    ]);
     const wrapPx = (Number(dx.priceUsd) > 0 && Number(dx.priceNative) > 0) ? Number(dx.priceUsd) / Number(dx.priceNative) : null;
+    let coin = {
+      ticker: dx.baseToken && dx.baseToken.symbol,
+      name: (dx.baseToken && dx.baseToken.name) || (dx.baseToken && dx.baseToken.symbol),
+      address,
+      poolId: dx.pairAddress,
+      pair: quote,
+      pairAddress: (dx.quoteToken && dx.quoteToken.address) || (stock && stock.address),
+      launchpad: padFromDex(dx.dexId) || "unknown",
+      price: dx.priceUsd,
+      priceNative: dx.priceNative,
+      change1h: dx.priceChange && dx.priceChange.h1,
+      change6h: dx.priceChange && dx.priceChange.h6,
+      change24h: dx.priceChange && dx.priceChange.h24,
+      marketCap: dx.marketCap || dx.fdv,
+      fdv: dx.fdv,
+      volume24h: dx.volume && dx.volume.h24,
+      liquidityUsd: dx.liquidity && dx.liquidity.usd,
+      buys24h: tx && tx.buys,
+      sells24h: tx && tx.sells,
+      createdAt: created ? new Date(created).toISOString() : null,
+      stockLockedUnits: lock.stockLockedUnits,
+      stockLockedUsd: lock.stockLockedUsd,
+      holders,
+      logo: null,
+      logoDetail: null,
+      imageUri: null,
+      dexImage: info.imageUrl || null,
+      banner: info.header || null,
+      socials: collectSocials(dxpack && dxpack.all),
+      dexUrl: dx.url,
+      chain: dx.chainId || "robinhood"
+    };
+    if (book) coin = mergeMfmc(coin, book);
+    coin.launchpad = cleanPad(coin.launchpad);
+    await fillPads([coin], 1);
+    coin.launchpad = cleanPad(coin.launchpad);
     res.status(200).json({
       generated: new Date().toISOString(),
       flagged: null,
       isEquity: isEquity || isMetal,
       isMetal,
-      coin: {
-        ticker: dx.baseToken && dx.baseToken.symbol,
-        name: (dx.baseToken && dx.baseToken.name) || (dx.baseToken && dx.baseToken.symbol),
-        address,
-        poolId: dx.pairAddress,
-        pair: quote,
-        pairAddress: (dx.quoteToken && dx.quoteToken.address) || (stock && stock.address),
-        launchpad: padNorm(dx.dexId),
-        price: dx.priceUsd,
-        priceNative: dx.priceNative,
-        change1h: dx.priceChange && dx.priceChange.h1,
-        change6h: dx.priceChange && dx.priceChange.h6,
-        change24h: dx.priceChange && dx.priceChange.h24,
-        marketCap: dx.marketCap || dx.fdv,
-        fdv: dx.fdv,
-        volume24h: dx.volume && dx.volume.h24,
-        liquidityUsd: dx.liquidity && dx.liquidity.usd,
-        buys24h: tx && tx.buys,
-        sells24h: tx && tx.sells,
-        createdAt: created ? new Date(created).toISOString() : null,
-        stockLockedUnits: lock.stockLockedUnits,
-        stockLockedUsd: lock.stockLockedUsd,
-        holders,
-        logo: null,
-        logoDetail: null,
-        imageUri: null,
-        dexImage: info.imageUrl || null,
-        banner: info.header || null,
-        socials: collectSocials(dxpack && dxpack.all),
-        dexUrl: dx.url,
-        chain: dx.chainId || "robinhood"
-      },
+      coin,
       stock: stock && {
         symbol: stock.symbol,
         name: stock.name,
