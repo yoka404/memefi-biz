@@ -51,6 +51,7 @@ function labelKind(k) {
 }
 function padPretty(raw) {
   const s = String(raw || "").toLowerCase();
+  if (!s || /uniswap|univ3|univ4|unknown|other|^dex$/.test(s)) return "—";
   if (s === "pons-v3") return "Pons V3";
   if (s === "pons-v2") return "Pons V2";
   if (s === "pons-v1" || s === "pons") return "Pons V1";
@@ -60,7 +61,7 @@ function padPretty(raw) {
   if (s.includes("flap")) return "Flap";
   if (s === "o1") return "o1.exchange";
   if (s === "pair") return "pair.fund";
-  return raw || "dex";
+  return raw;
 }
 function shortAddr(a) {
   const s = String(a || "");
@@ -168,7 +169,7 @@ async function main() {
   document.getElementById("chips").innerHTML =
     '<span class="chip">$' + (c.ticker || "") + '</span>' +
     (c.pair ? '<span class="chip">quoted in ' + c.pair + '</span>' : '') +
-    '<span class="chip">' + padPretty(c.launchpad) + '</span>' +
+    (padPretty(c.launchpad) !== "—" ? '<span class="chip">' + padPretty(c.launchpad) + '</span>' : '') +
     '<button type="button" class="chip copy" data-copy="' + c.address + '">' + shortAddr(c.address) + ' · copy</button>';
   document.getElementById("sub").textContent = equity
     ? "$" + c.ticker + " is quoted against tokenized " + c.pair + "."
