@@ -155,7 +155,7 @@ function buildSnapshot(book, util, movers, lockedLeaders, headBlock) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("Cache-Control", "s-maxage=45, stale-while-revalidate=120");
+  res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=180");
   try {
     const [uni, book] = await Promise.all([
       buildUniverse(),
@@ -200,22 +200,26 @@ export default async function handler(req, res) {
     const all = Object.values(map).map((c) => book ? mergeMfmc(c, book) : c);
     let world = all.filter((c) => !looksScam(c) && !isWrapper(c));
     world.sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
-    await fillDex(world.slice(0, 200), 80);
+    const quotes = {};
+    await Promise.all([
+      fillDex(world.slice(0, 40), 16),
+      Promise.all(YAHOO.map(async (s) => {
+        try {
+          const px = await yahoo(s);
+          if (px != null) quotes[s] = px;
+        } catch (e) {}
+      }))
+    ]);
     world = world.filter((c) => !looksScam(c) && !isWrapper(c));
     const onchain = (uni && uni.onchain) || {};
     const tape = world.filter(onTape).sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
-    await fillHolders(tape.slice(0, 40), 16);
-    await fillPads(tape.slice(0, 24), 24);
+    await Promise.all([
+      fillHolders(tape.slice(0, 16), 8),
+      fillPads(tape.slice(0, 12), 12)
+    ]);
     tape.forEach((c, i) => { c.rank = i + 1; });
     const metals = tape.filter((c) => c.pair === "GLD" || c.pair === "SLV");
     const newest = tape.slice().sort((a, b) => String(b.createdAt || b.launchedAt || "").localeCompare(String(a.createdAt || a.launchedAt || ""))).slice(0, 80);
-    const quotes = {};
-    await Promise.all(YAHOO.map(async (s) => {
-      try {
-        const px = await yahoo(s);
-        if (px != null) quotes[s] = px;
-      } catch (e) {}
-    }));
     const bookCoins = (book && book.coins ? book.coins : all).filter((c) => {
       const addr = String(c.address || "").toLowerCase();
       return !BAN_ADDR.has(addr) && !BAN_TICK.test(String(c.ticker || "")) && !/golden goose/i.test(String(c.name || ""));

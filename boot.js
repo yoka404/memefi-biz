@@ -4,7 +4,6 @@
   const copy = document.getElementById("boot-copy");
   if (!boot || !fill) return;
   let n = 8;
-  const done = { board: false, wire: false };
   let closed = false;
   function say(s) {
     if (copy && s) copy.textContent = s;
@@ -17,20 +16,18 @@
     if (closed) return;
     closed = true;
     paint(100);
-    say("Fetching data");
     boot.classList.add("done");
-    setTimeout(function () { boot.classList.add("out"); }, 220);
-    setTimeout(function () { if (boot.parentNode) boot.parentNode.removeChild(boot); }, 620);
+    setTimeout(function () { boot.classList.add("out"); }, 180);
+    setTimeout(function () { if (boot.parentNode) boot.parentNode.removeChild(boot); }, 560);
   }
   window.bootMark = function (key) {
-    if (key === "board") { done.board = true; paint(74); }
-    if (key === "wire") { done.wire = true; paint(88); }
-    if (done.board && done.wire) close();
+    if (key === "wire") paint(55);
+    if (key === "board") { paint(96); close(); }
   };
   say("Fetching data");
   const tick = setInterval(function () {
     if (closed) { clearInterval(tick); return; }
-    if (n < 58) paint(n + Math.max(0.4, (58 - n) * 0.07));
+    if (n < 48) paint(n + Math.max(0.35, (48 - n) * 0.06));
   }, 70);
-  setTimeout(function () { if (!closed) close(); }, 9000);
+  setTimeout(function () { if (!closed) close(); }, 14000);
 })();

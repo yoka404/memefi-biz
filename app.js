@@ -265,30 +265,12 @@ async function refresh() {
     if (!r.ok) throw new Error("board");
     CACHE = await r.json();
     paint();
+    if (window.bootMark) window.bootMark("board");
   } catch (e) {
     const rows = document.getElementById("rows");
     if (rows && !CACHE) rows.innerHTML = `<tr><td colspan="10">Board feed unavailable</td></tr>`;
+    if (window.bootMark) window.bootMark("board");
   }
-}
-
-async function loadWire() {
-  const ul = document.getElementById("wire-list");
-  if (!ul) return;
-  try {
-    const r = await fetch("/api/wire");
-    if (!r.ok) return;
-    const data = await r.json();
-    const items = data.items || [];
-    if (!items.length) return;
-    ul.innerHTML = items.map((it) => {
-      const src = String(it.source || "Wire").replace(/</g, "");
-      const title = String(it.title || "").replace(/</g, "");
-      const href = String(it.url || "#").replace(/"/g, "");
-      return `<li><em>${src}</em><strong>${title}</strong><a class="read" href="${href}" target="_blank" rel="noopener"><span class="ico">📰</span>Read</a></li>`;
-    }).join("");
-    const tag = document.getElementById("wire-tag");
-    if (tag) { tag.textContent = "LIVE"; tag.classList.add("on-air"); }
-  } catch (e) {}
 }
 
 document.addEventListener("click", (e) => {
@@ -314,7 +296,5 @@ document.addEventListener("input", (e) => {
 });
 
 refresh();
-loadWire();
 setInterval(refresh, 60000);
 setInterval(tickLive, 1000);
-setInterval(loadWire, 180000);
