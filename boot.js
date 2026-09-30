@@ -17,16 +17,17 @@
     if (closed) return;
     closed = true;
     paint(100);
-    say("Live");
+    say("Fetching data");
     boot.classList.add("done");
-    setTimeout(function () { boot.classList.add("out"); }, 280);
-    setTimeout(function () { if (boot.parentNode) boot.parentNode.removeChild(boot); }, 750);
+    setTimeout(function () { boot.classList.add("out"); }, 220);
+    setTimeout(function () { if (boot.parentNode) boot.parentNode.removeChild(boot); }, 620);
   }
   window.bootMark = function (key) {
-    if (key === "board") { done.board = true; paint(74); say("Reading chain"); }
-    if (key === "wire") { done.wire = true; paint(88); say("Reading wire"); }
+    if (key === "board") { done.board = true; paint(74); }
+    if (key === "wire") { done.wire = true; paint(88); }
     if (done.board && done.wire) close();
   };
+  say("Fetching data");
   const tick = setInterval(function () {
     if (closed) { clearInterval(tick); return; }
     if (n < 58) paint(n + Math.max(0.4, (58 - n) * 0.07));

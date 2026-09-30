@@ -28,7 +28,13 @@
 <link rel="stylesheet" href="desk.css"/>
 </head>
 <body>
-<div id="boot" aria-hidden="true"><i id="boot-fill"></i><em id="boot-copy">Reading chain</em></div>
+<div id="boot" aria-hidden="true">
+  <div class="boot-core">
+    <span class="boot-pulse"></span>
+    <em id="boot-copy">Fetching data</em>
+    <span class="boot-rail"><i id="boot-fill"></i></span>
+  </div>
+</div>
 <header class="nav">
   <a class="brand" href="/">MEMEFI</a>
   <nav>
@@ -143,7 +149,7 @@
   </div>
 </footer>
 <p id="snap" hidden></p>
-<script src="boot.js?v=2"></script>
+<script src="boot.js?v=3"></script>
 <script src="snap.js?v=13"></script>
 <script src="app.js?v=13"></script>
 <script src="pads-ui.js?v=2"></script>
