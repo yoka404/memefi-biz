@@ -7,21 +7,12 @@
 <meta name="description" content="Permanent pair file on MEMEFI."/>
 <meta name="theme-color" content="#000000"/>
 <link rel="icon" type="image/png" href="https://www.memefi.biz/memefi.png"/>
-<meta property="og:type" content="website"/>
-<meta property="og:site_name" content="MEMEFI"/>
-<meta property="og:title" content="Pair · MEMEFI"/>
-<meta property="og:description" content="On-chain file for a stock-paired or metal-paired memecoin."/>
-<meta property="og:image" content="https://www.memefi.biz/memefi.png"/>
-<meta name="twitter:card" content="summary_large_image"/>
-<meta name="twitter:site" content="@memefibiz"/>
-<meta name="twitter:creator" content="@memefibiz"/>
-<meta name="twitter:title" content="Pair · MEMEFI"/>
-<meta name="twitter:image" content="https://www.memefi.biz/memefi.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="/styles.css"/>
 <link rel="stylesheet" href="/load.css"/>
 <link rel="stylesheet" href="/profile.css"/>
+<link rel="stylesheet" href="/mobile.css?v=1"/>
 </head>
 <body>
 <header class="nav">
@@ -30,10 +21,10 @@
     <a href="/">Desk</a>
     <a href="/#wire">Wire</a>
     <a href="/#prices">Board</a>
+    <a href="/yield">Yield</a>
     <a href="https://x.com/memefibiz" target="_blank" rel="noopener">X</a>
   </nav>
 </header>
-
 <section class="profile">
   <img class="banner" id="banner" hidden alt=""/>
   <div class="profile-top">
@@ -47,47 +38,22 @@
       <div class="socials" id="socials"></div>
     </div>
   </div>
-  <div class="pills" id="pills">
-    <div><em>Last</em><b class="waiting">—</b></div>
-    <div><em>On-chain</em><b class="waiting">—</b></div>
-    <div><em>Cash</em><b class="waiting">—</b></div>
-    <div><em>Premium</em><b class="waiting">—</b></div>
-  </div>
+  <div class="pills" id="pills"></div>
   <p class="flagline" id="flag" hidden></p>
 </section>
-
 <section class="layout">
   <article class="card wide">
     <div class="card-head"><h2>Chart</h2><span>GeckoTerminal</span></div>
-    <div class="chart-frame" id="chart"><span class="skel lg"></span></div>
+    <div class="chart-frame" id="chart"></div>
   </article>
 </section>
-
 <section class="layout">
   <article class="card wide">
-    <div class="card-head"><h2>File</h2><span id="session">On-chain</span></div>
-    <div class="board-scroll">
-    <table class="tape file">
-      <tbody id="file">
-        <tr><th></th><td><span class="skel lg"></span></td></tr>
-        <tr><th></th><td><span class="skel md"></span></td></tr>
-        <tr><th></th><td><span class="skel sm"></span></td></tr>
-      </tbody>
-    </table>
-    </div>
+    <div class="card-head"><h2>File</h2><span>On-chain</span></div>
+    <div class="board-scroll"><table class="tape file"><tbody id="file"></tbody></table></div>
   </article>
-</section>
-
-<section class="feature">
-  <img src="/memefi.png" alt=""/>
-  <div>
-    <p class="eyebrow">Disclaimer</p>
-    <h2>No claim on the cash stock.</h2>
-    <p>Holding the memecoin does not confer shares, dividends, or votes. The tokenized equity sits in the pool. Follow the desk on <a href="https://x.com/memefibiz" target="_blank" rel="noopener">@memefibiz</a>.</p>
-  </div>
 </section>
 <footer><a href="https://x.com/memefibiz" target="_blank" rel="noopener">@memefibiz</a> · Who controls the memes controls the tape</footer>
 <script src="/pair.js?v=5"></script>
-<script src="/pads-ui.js?v=2"></script>
 </body>
 </html>

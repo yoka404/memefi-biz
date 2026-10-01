@@ -26,6 +26,7 @@
 <link rel="stylesheet" href="load.css?v=5"/>
 <link rel="stylesheet" href="boot-copy.css?v=5"/>
 <link rel="stylesheet" href="desk.css"/>
+<link rel="stylesheet" href="mobile.css?v=1"/>
 </head>
 <body>
 <div id="boot" role="status" aria-live="polite">
@@ -46,7 +47,6 @@
     <a href="https://x.com/memefibiz" target="_blank" rel="noopener">X</a>
   </nav>
 </header>
-
 <section class="wire-desk" id="wire">
   <div class="card-head">
     <h2>Wire</h2>
@@ -61,13 +61,9 @@
   </div>
   <div class="wire-dots" id="wire-dots"></div>
 </section>
-
 <section class="layout" id="snapshot">
   <article class="card wide snapcard">
-    <div class="card-head">
-      <h2>Market snapshot</h2>
-      <span id="snap-block">on-chain</span>
-    </div>
+    <div class="card-head"><h2>Market snapshot</h2><span id="snap-block">on-chain</span></div>
     <div class="snap-kpis" id="snap-kpis">
       <div data-tip="Official stock or metal tokens sitting in meme pools."><em>Stock locked in pools</em><b id="kpi-locked">-</b><small id="kpi-locked-sub">in meme pools</small></div>
       <div data-tip="Share of official wrappers sitting in meme pools versus outstanding wrapper value."><em>In pools</em><b id="kpi-util">-</b><small id="kpi-util-sub">locked / outstanding</small></div>
@@ -76,24 +72,14 @@
       <div><em>Volume 24h</em><b id="kpi-vol">-</b><small id="kpi-vol-sub">fees / holders</small></div>
     </div>
     <div class="snap-split">
-      <div>
-        <div class="card-head tight"><h2>Top movers</h2><span>24h / $3M+ market cap</span></div>
-        <ul class="snap-list" id="snap-movers"></ul>
-      </div>
-      <div>
-        <div class="card-head tight"><h2>Most equity locked</h2><span>stock side of the pool</span></div>
-        <ul class="snap-list" id="snap-locked"></ul>
-      </div>
+      <div><div class="card-head tight"><h2>Top movers</h2><span>24h / $3M+ market cap</span></div><ul class="snap-list" id="snap-movers"></ul></div>
+      <div><div class="card-head tight"><h2>Most equity locked</h2><span>stock side of the pool</span></div><ul class="snap-list" id="snap-locked"></ul></div>
     </div>
   </article>
 </section>
-
 <section class="layout" id="prices">
   <article class="card wide board">
-    <div class="card-head">
-      <h2>Board</h2>
-      <span id="session">Stock-paired</span>
-    </div>
+    <div class="card-head"><h2>Board</h2><span id="session">Stock-paired</span></div>
     <div class="filters" id="pads">
       <button data-pad="all" class="on" data-tip="Every pair on the board with market cap at or above $100k.">All</button>
       <button data-pad="pons" data-tip="Pons V1, V2 and V3 launches quoted in official stock or metal tokens.">Pons</button>
@@ -112,48 +98,26 @@
     </div>
     <div class="board-scroll">
     <table class="tape">
-      <thead>
-        <tr>
-          <th class="num">#</th>
-          <th>Name</th>
-          <th data-tip="Official tokenized stock or metal used as the quote asset.">Paired asset</th>
-          <th>Market cap</th>
-          <th>24h</th>
-          <th>Price</th>
-          <th>Volume 24h</th>
-          <th data-tip="How much of the stock or metal token sits in the liquidity pool.">Asset locked</th>
-          <th data-tip="On-chain wrapper price versus last NYSE cash print.">Premium</th>
-          <th>Holders</th>
-        </tr>
-      </thead>
-      <tbody id="rows">
-        <tr class="skel-row"><td></td><td><span class="skel dot"></span> <span class="skel lg"></span></td><td><span class="skel md"></span></td><td><span class="skel sm"></span></td><td><span class="skel sm"></span></td><td><span class="skel md"></span></td><td><span class="skel sm"></span></td><td><span class="skel md"></span></td><td><span class="skel sm"></span></td><td><span class="skel sm"></span></td></tr>
-      </tbody>
+      <thead><tr>
+        <th class="num">#</th><th>Name</th>
+        <th data-tip="Official tokenized stock or metal used as the quote asset.">Paired asset</th>
+        <th>Market cap</th><th>24h</th><th>Price</th><th>Volume 24h</th>
+        <th data-tip="How much of the stock or metal token sits in the liquidity pool.">Asset locked</th>
+        <th data-tip="On-chain wrapper price versus last NYSE cash print.">Premium</th>
+        <th>Holders</th>
+      </tr></thead>
+      <tbody id="rows"><tr class="skel-row"><td></td><td><span class="skel dot"></span> <span class="skel lg"></span></td><td><span class="skel md"></span></td><td><span class="skel sm"></span></td><td><span class="skel sm"></span></td><td><span class="skel md"></span></td><td><span class="skel sm"></span></td><td><span class="skel md"></span></td><td><span class="skel sm"></span></td><td><span class="skel sm"></span></td></tr></tbody>
     </table>
     </div>
   </article>
 </section>
-
-<section class="feature" id="token">
-  <div>
-    <p class="eyebrow">Token</p>
-    <h2>$MEMEFI</h2>
-    <p>CA: Coming soon · <a href="https://x.com/memefibiz" target="_blank" rel="noopener">Follow @memefibiz</a></p>
-  </div>
-</section>
-
-<footer class="signoff">
-  <img src="memefi.png" width="88" height="88" alt="MEMEFI"/>
-  <div>
-    <p class="eyebrow">Memefi desk</p>
-    <p class="mark">Who controls<br>the memes<br>controls the tape.</p>
-  </div>
-</footer>
+<section class="feature" id="token"><div><p class="eyebrow">Token</p><h2>$MEMEFI</h2><p>CA: Coming soon · <a href="https://x.com/memefibiz" target="_blank" rel="noopener">Follow @memefibiz</a></p></div></section>
+<footer class="signoff"><img src="memefi.png" width="88" height="88" alt="MEMEFI"/><div><p class="eyebrow">Memefi desk</p><p class="mark">Who controls<br>the memes<br>controls the tape.</p></div></footer>
 <p id="snap" hidden></p>
 <script src="boot.js?v=5"></script>
 <script src="snap.js?v=13"></script>
 <script src="app.js?v=14"></script>
 <script src="pads-ui.js?v=2"></script>
-<script src="wire-ui.js?v=7"></script>
+<script src="wire-ui.js?v=8"></script>
 </body>
 </html>

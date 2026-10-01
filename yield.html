@@ -4,59 +4,24 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Yield — MEMEFI</title>
-<meta name="description" content="Yield farm on MEMEFI. Coming soon, powered by Morpho."/>
 <meta name="theme-color" content="#000000"/>
 <link rel="icon" type="image/png" href="https://www.memefi.biz/memefi.png"/>
 <link rel="canonical" href="https://www.memefi.biz/yield"/>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="styles.css?v=6"/>
+<link rel="stylesheet" href="mobile.css?v=1"/>
 <style>
   body{background:#000}
-  .yield-page{
-    min-height:calc(100vh - 49px);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:32px 24px 64px;
-    position:relative;
-    overflow:hidden;
-  }
-  .yield-page::before{
-    content:"";
-    position:absolute;
-    inset:0;
-    background:
-      radial-gradient(ellipse 42% 36% at 50% 46%, rgba(197,164,92,.08), transparent 70%),
-      linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
-    background-size:auto, 72px 72px, 72px 72px;
-    mask-image:radial-gradient(ellipse at center, #000 20%, transparent 72%);
-    pointer-events:none;
-  }
-  .yield-core{
-    position:relative;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    text-align:center;
-    max-width:460px;
-  }
+  .yield-page{min-height:calc(100vh - 49px);display:flex;align-items:center;justify-content:center;padding:32px 24px 64px;position:relative;overflow:hidden}
+  .yield-page::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 42% 36% at 50% 46%, rgba(197,164,92,.08), transparent 70%),linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);background-size:auto,72px 72px,72px 72px;mask-image:radial-gradient(ellipse at center,#000 20%,transparent 72%);pointer-events:none}
+  .yield-core{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;max-width:460px}
   .mark{width:148px;height:148px;margin-bottom:28px}
   .ring{transform-origin:74px 74px;animation:spin 28s linear infinite}
   .curve{stroke-dasharray:180;stroke-dashoffset:180;animation:draw 3.6s ease forwards}
-  .yield-core .eyebrow{margin-bottom:8px}
-  .yield-core h1{
-    font-size:clamp(36px,6vw,52px);
-    font-weight:600;
-    letter-spacing:-.04em;
-    line-height:1;
-    margin:0 0 14px;
-  }
+  .yield-core h1{font-size:clamp(36px,6vw,52px);font-weight:600;letter-spacing:-.04em;line-height:1;margin:0 0 14px}
   .yield-core p{color:#8b8b97;line-height:1.55;max-width:38ch}
-  .powered{margin-top:22px;font-size:13px;color:#8b8b97}
+  .powered{margin-top:22px;font-size:13px}
   .powered a{color:#f4f4f5;text-decoration:none;border-bottom:1px solid #2a2a32}
-  .powered a:hover{color:#c5a45c;border-color:#c5a45c}
   @keyframes spin{to{transform:rotate(360deg)}}
   @keyframes draw{to{stroke-dashoffset:0}}
 </style>
@@ -78,7 +43,6 @@
     <svg class="mark" viewBox="0 0 148 148" aria-hidden="true">
       <circle cx="74" cy="74" r="58" fill="none" stroke="#1c1c24" stroke-width="1"/>
       <circle class="ring" cx="74" cy="74" r="58" fill="none" stroke="#c5a45c" stroke-width="1.25" stroke-dasharray="18 92" stroke-linecap="round"/>
-      <circle cx="74" cy="74" r="40" fill="none" stroke="#1c1c24" stroke-width="1"/>
       <path class="curve" d="M46 86 C58 86 62 58 74 62 C86 66 90 84 102 70" fill="none" stroke="#e8d7a8" stroke-width="1.4" stroke-linecap="round"/>
       <circle cx="102" cy="70" r="2.2" fill="#c5a45c"/>
     </svg>
