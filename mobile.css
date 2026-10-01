@@ -1,0 +1,37 @@
+@media(max-width:720px){
+  .nav{padding:10px 12px;gap:12px;flex-wrap:nowrap}
+  nav{flex:1 1 auto;order:0;gap:16px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  nav::-webkit-scrollbar{display:none}
+  nav a{flex:0 0 auto;padding:8px 0}
+  .wire-desk{padding:12px 12px 4px}
+  .wire-tools button{width:36px;height:36px}
+  .wire-card{flex-basis:min(280px,78vw);min-height:240px}
+  .wire-card .copy strong{font-size:14px}
+  .layout,.profile{padding-left:12px;padding-right:12px}
+  .snap-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .snap-kpis div{padding:12px 10px}
+  .snap-kpis b{font-size:18px}
+  .snap-kpis em{letter-spacing:.04em}
+  .filters{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:8px}
+  .filters::-webkit-scrollbar{display:none}
+  .filters button{flex:0 0 auto}
+  .toolbar{gap:6px}
+  .toolbar input{flex:1 1 100%}
+  .tape th:nth-child(1),.tape td:nth-child(1),
+  .tape th:nth-child(7),.tape td:nth-child(7),
+  .tape th:nth-child(8),.tape td:nth-child(8),
+  .tape th:nth-child(10),.tape td:nth-child(10){display:none}
+  table.tape{min-width:0;font-size:12px}
+  .tape td,.tape th{padding:8px 6px}
+  .stock{min-width:0;gap:6px;padding:4px 6px}
+  .namecell strong{font-size:12px}
+  .namecell img{width:24px;height:24px;flex-basis:24px}
+  .feature{margin-left:12px;margin-right:12px}
+  .signoff{padding:36px 16px 28px}
+  .signoff img{width:64px;height:64px}
+  .chart-frame{height:280px}
+  .banner{max-height:180px}
+  .profile .pills{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .profile .pills b{font-size:16px}
+  .yield-page{padding:24px 20px 48px}
+}

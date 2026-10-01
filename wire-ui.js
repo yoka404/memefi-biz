@@ -65,12 +65,13 @@ function paintWire(items) {
     const src = clean(it.source || "Wire");
     const title = clean(it.title || "");
     const blurb = okBlurb(clean(it.blurb || ""));
-    const photo = goodImg(img)
+    const hasImg = goodImg(img);
+    const photo = hasImg
       ? '<img src="' + img + '" alt="" draggable="false" loading="' + (i ? "lazy" : "eager") + '" data-srcname="' + src.replace(/"/g, "") + '" onerror="failShot(this)"/>'
       : cover(src);
     return '<a class="wire-card" href="' + href + '" target="_blank" rel="noopener noreferrer">' +
       '<div class="shot">' + photo + '</div>' +
-      '<div class="copy"><em>' + src + '</em><strong>' + title + '</strong>' +
+      '<div class="copy">' + (hasImg ? '<em>' + src + '</em>' : '') + '<strong>' + title + '</strong>' +
       (blurb ? '<span>' + blurb + '</span>' : '') +
       '</div></a>';
   }).join("");
