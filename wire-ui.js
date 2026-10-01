@@ -80,21 +80,28 @@ function paintWire(items) {
   const tag = document.getElementById("wire-tag");
   if (tag) { tag.textContent = "Live"; tag.classList.add("on-air"); }
 }
+function markDot(i) {
+  document.querySelectorAll("#wire-dots button").forEach((b, n) => b.classList.toggle("on", n === i));
+}
 function scrollToCard(i) {
   const track = document.getElementById("wire-track");
   if (!track) return;
-  const card = track.children[i];
-  if (card) card.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
-  document.querySelectorAll("#wire-dots button").forEach((b, n) => b.classList.toggle("on", n === i));
+  const cards = Array.from(track.children);
+  const n = Math.max(0, Math.min(cards.length - 1, i));
+  const card = cards[n];
+  if (!card) return;
+  const left = card.getBoundingClientRect().left - track.getBoundingClientRect().left + track.scrollLeft;
+  track.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+  markDot(n);
 }
 function currentIndex() {
   const track = document.getElementById("wire-track");
   if (!track || !track.children.length) return 0;
-  const x = track.scrollLeft;
+  const origin = track.getBoundingClientRect().left;
   let best = 0;
   let dist = Infinity;
   Array.from(track.children).forEach((el, i) => {
-    const d = Math.abs(el.offsetLeft - x);
+    const d = Math.abs(el.getBoundingClientRect().left - origin);
     if (d < dist) { dist = d; best = i; }
   });
   return best;
@@ -114,13 +121,11 @@ document.addEventListener("click", (e) => {
   const t = e.target;
   if (!t) return;
   if (t.id === "wire-prev" || (t.closest && t.closest("#wire-prev"))) {
-    scrollToCard(Math.max(0, currentIndex() - 1));
+    scrollToCard(currentIndex() - 1);
     return;
   }
   if (t.id === "wire-next" || (t.closest && t.closest("#wire-next"))) {
-    const track = document.getElementById("wire-track");
-    const max = track ? track.children.length - 1 : 0;
-    scrollToCard(Math.min(max, currentIndex() + 1));
+    scrollToCard(currentIndex() + 1);
     return;
   }
   if (t.dataset && t.dataset.w != null) {
@@ -141,10 +146,7 @@ document.addEventListener("click", (e) => {
 setTimeout(() => {
   const el = document.getElementById("wire-track");
   if (!el) return;
-  el.addEventListener("scroll", () => {
-    const i = currentIndex();
-    document.querySelectorAll("#wire-dots button").forEach((b, n) => b.classList.toggle("on", n === i));
-  }, { passive: true });
+  el.addEventListener("scroll", () => markDot(currentIndex()), { passive: true });
 }, 0);
 loadCarousel();
 setInterval(loadCarousel, 120000);
