@@ -12,7 +12,7 @@
   --amber:#f5c14a;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{overflow-x:hidden}
+html{overflow-x:hidden;scroll-behavior:smooth}
 body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;font-size:14px}
 .nav{display:flex;align-items:center;gap:16px;padding:12px 24px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(0,0,0,.86);backdrop-filter:blur(16px);z-index:8;flex-wrap:wrap}
 .brand{font-weight:700;letter-spacing:.16em;font-size:13px;color:var(--text);text-decoration:none}
@@ -115,6 +115,12 @@ footer{text-align:center;color:#5c5c68;padding:20px 12px;font-size:11px;letter-s
 .snap-list .r{text-align:right;font-variant-numeric:tabular-nums}
 .snap-list .r b{display:block;font-size:13px}
 .snap-list .r small{display:block;font-size:11px}
+.soon{padding:48px 24px 56px;max-width:520px}
+.soon h3{font-size:28px;font-weight:650;letter-spacing:-.03em;margin-bottom:10px}
+.soon p{color:var(--mute);line-height:1.55;max-width:42ch}
+.soon .powered{margin-top:18px;font-size:13px;color:var(--mute)}
+.soon .powered a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line)}
+.soon .powered a:hover{color:var(--purple);border-color:var(--purple)}
 [data-tip]{position:relative}
 [data-tip]:hover::after{
   content:attr(data-tip);
@@ -147,6 +153,7 @@ footer{text-align:center;color:#5c5c68;padding:20px 12px;font-size:11px;letter-s
   .tape th:nth-child(10),.tape td:nth-child(10){display:none}
   table.tape{min-width:520px}
   .file th{width:96px}
+  .soon{padding:36px 16px 44px}
 }
 @media(max-width:420px){
   h1{font-size:28px}
