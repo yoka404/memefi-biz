@@ -1,8 +1,8 @@
 {
   "cleanUrls": true,
+  "trailingSlash": false,
   "rewrites": [
-    { "source": "/p/:address", "destination": "/pair.html" },
-    { "source": "/yield", "destination": "/yield.html" }
+    { "source": "/p/:address", "destination": "/pair?address=:address" }
   ],
   "headers": [
     {
