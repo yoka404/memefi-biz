@@ -1,10 +1,16 @@
 #boot-copy{
   font-style:normal;
-  font-size:12px;
-  font-weight:500;
-  letter-spacing:.22em;
-  text-transform:uppercase;
-  color:#c4b5fd;
+  font-size:13px;
+  font-weight:400;
+  letter-spacing:0;
+  text-transform:none;
+  color:#8b8b97;
   white-space:nowrap;
   pointer-events:none;
+}
+.boot-mark{
+  font-size:13px;
+  font-weight:600;
+  letter-spacing:.16em;
+  color:#f4f4f5;
 }

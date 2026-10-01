@@ -3,7 +3,7 @@
   const fill = document.getElementById("boot-fill");
   const copy = document.getElementById("boot-copy");
   if (!boot || !fill) return;
-  let n = 8;
+  let n = 12;
   let closed = false;
   function say(s) {
     if (copy && s) copy.textContent = s;
@@ -17,14 +17,14 @@
     closed = true;
     paint(100);
     boot.classList.add("done");
-    setTimeout(function () { boot.classList.add("out"); }, 180);
-    setTimeout(function () { if (boot.parentNode) boot.parentNode.removeChild(boot); }, 560);
+    setTimeout(function () { boot.classList.add("out"); }, 160);
+    setTimeout(function () { if (boot.parentNode) boot.parentNode.removeChild(boot); }, 480);
   }
   window.bootMark = function (key) {
     if (key === "wire") paint(55);
     if (key === "board") { paint(96); close(); }
   };
-  say("Fetching data");
+  say("Loading market data");
   const tick = setInterval(function () {
     if (closed) { clearInterval(tick); return; }
     if (n < 48) paint(n + Math.max(0.35, (48 - n) * 0.06));
