@@ -174,8 +174,16 @@ function buildSnapshot(book, util, movers, lockedLeaders, headBlock) {
   };
 }
 
+let boardCache = null;
+let boardAt = 0;
+
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=180");
+  const now = Date.now();
+  if (boardCache && now - boardAt < 90000) {
+    res.status(200).json(boardCache);
+    return;
+  }
   try {
     const [uni, book] = await Promise.all([
       buildUniverse(),
@@ -271,7 +279,7 @@ export default async function handler(req, res) {
       .sort((a, b) => Number(b.stockLockedUsd) - Number(a.stockLockedUsd))
       .slice(0, 3)
       .map(lite);
-    res.status(200).json({
+    const result = {
       generated: (book && book.generated) || (uni && uni.generated),
       source: book ? "mfmc-v4+indexer" : "ownbook+indexer",
       wrappers: uni && uni.wrappers,
@@ -291,8 +299,12 @@ export default async function handler(req, res) {
       newest,
       metals,
       flagged: []
-    });
+    };
+    boardCache = result;
+    boardAt = now;
+    res.status(200).json(result);
   } catch (e) {
+    if (boardCache) { res.status(200).json(boardCache); return; }
     res.status(502).json({ error: String(e.message || e) });
   }
 }
