@@ -1,3 +1,291 @@
 export const config = { maxDuration: 45 };
-// Test write access
-export default async function handler(req, res) { res.status(200).json({ test: true }); }
+import { buildUniverse } from "../lib/indexer.js";
+import { fillHolders } from "../lib/blockscout.js";
+import { fillPads } from "../lib/airlock.js";
+import { fillDex } from "../lib/dex.js";
+import { padGroup } from "../lib/pads.js";
+import { tokenSupply, latestBlock } from "../lib/rpc.js";
+import { loadMfmc, mergeMfmc } from "../lib/mfmc.js";
+
+const YAHOO = ["AMC","NVDA","HIMS","MU","MSTR","TSLA","HOOD","AAPL","GME","SPY","MSFT","AMD","AMZN","META","GOOGL","NFLX","PLTR","INTC","BABA","COIN","RBLX","DJT","GLD","SLV","QQQ","IWM","COST","LLY","BB"];
+const PIN = "0x385f4f8ae47651ce5f58f5265395a669f8281e18".toLowerCase();
+const PIN_BONER = "0x98096d17e191b3da1d5f99a6d7b3584351b11e18".toLowerCase();
+const PIN_AI = "0x2e8c31162b855a2ffa90f6f8634643ad6f111e18".toLowerCase();
+const PIN_ICOIN = "0x5d6ef090a1461b11c9427ac319260122d1c61e18".toLowerCase();
+const PINS = new Set([PIN, PIN_BONER, PIN_AI, PIN_ICOIN]);
+const JUNK = /^(test|asdf|qwer|xxxx|zzzz|aaaa|abcd|foo|bar|xxx)$/i;
+const TRUSTED = new Set(["long", "bankr", "feel", "flap", "pons", "o1", "pair"]);
+const TAPE_FLOOR = 1e5;
+const MOVER_FLOOR = 3e6;
+const BAN_ADDR = new Set([
+  "0xcec185eb182c47d1ba1efc84e6959e18cd620be4",
+  "0x835f8dc4de4684ee10dd0fb1e1656b6e065ba104",
+  "0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+  "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+  "0xcacb0e9caccee63ec4d82952e561a291c68bcb68",
+  "0x73cfe72ab68530656e91b682572ec480c1c4faa4",
+  "0xd3c3f631c5073f485eec513f22dace416491fcba"
+]);
+const BAN_TICK = /^(CBBTC|WBTC|BTC|WETH|ETH|USDG|USDC|USDT|USDE|DAI|USD|GG|GOOSE|GOLDENGOOSE)$/i;
+
+async function yahoo(symbol) {
+  const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(symbol) + "?interval=1d&range=5d";
+  const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 memefi.biz" } });
+  if (!r.ok) return null;
+  const data = await r.json();
+  const px = data.chart && data.chart.result && data.chart.result[0] && data.chart.result[0].meta && data.chart.result[0].meta.regularMarketPrice;
+  return Number.isFinite(Number(px)) ? Number(px) : null;
+}
+
+function isWrapper(c) {
+  if (!c) return true;
+  const addr = String(c.address || "").toLowerCase();
+  if (PINS.has(addr)) return false;
+  if (BAN_ADDR.has(addr)) return true;
+  const tick = String(c.ticker || "");
+  const name = String(c.name || "");
+  if (BAN_TICK.test(tick)) return true;
+  if (/golden goose/i.test(name)) return true;
+  if (/wrapped btc|coinbase wrapped|wrapped bitcoin/i.test(name)) return true;
+  const px = Number(c.price);
+  const mcap = Number(c.marketCap);
+  if (px > 1000 && mcap > 1e8) return true;
+  if (px > 0.97 && px < 1.03 && mcap > 5e6) return true;
+  return false;
+}
+
+function looksScam(c) {
+  if (!c) return true;
+  if (PINS.has(c.address)) return false;
+  if (isWrapper(c)) return true;
+  const tick = String(c.ticker || "");
+  const name = String(c.name || "").replace(/\s+/g, "");
+  if (JUNK.test(tick) || JUNK.test(name)) return true;
+  if (/testasdas|asdasd|qwerty|aaaaaa/i.test(tick + name)) return true;
+  const mcap = Number(c.marketCap);
+  const liq = Number(c.liquidityUsd);
+  const trusted = TRUSTED.has(padGroup(c.launchpad));
+  if (Number.isFinite(mcap) && mcap > 5e9) return true;
+  if (Number.isFinite(liq) && liq > 0 && liq < 100 && Number.isFinite(mcap) && mcap > 1e6 && !trusted) return true;
+  return false;
+}
+
+function onTape(c) {
+  if (!c) return false;
+  if (PINS.has(c.address)) return true;
+  if (isWrapper(c) || looksScam(c)) return false;
+  return Number(c.marketCap) >= TAPE_FLOOR;
+}
+
+function buildLogos(rh) {
+  const out = {};
+  const keys = new Set(Object.keys(rh || {}));
+  for (const s of YAHOO) keys.add(s);
+  for (const sym of keys) {
+    out[sym] = {
+      stock: "https://financialmodelingprep.com/image-stock/" + encodeURIComponent(sym) + ".png",
+      rh: rh && rh[sym] ? rh[sym] : null
+    };
+  }
+  return out;
+}
+
+function lite(c) {
+  return {
+    ticker: c.ticker,
+    name: c.name,
+    address: c.address,
+    pair: c.pair,
+    price: c.price,
+    marketCap: c.marketCap,
+    change24h: c.change24h,
+    stockLockedUsd: c.stockLockedUsd,
+    stockLockedUnits: c.stockLockedUnits,
+    dexImage: c.dexImage || null
+  };
+}
+
+async function wrapperUtil(coins, onchain) {
+  const by = {};
+  for (const c of coins || []) {
+    const addr = String(c.address || "").toLowerCase();
+    if (BAN_ADDR.has(addr)) continue;
+    const tick = String(c.ticker || "");
+    const name = String(c.name || "");
+    if (BAN_TICK.test(tick) || /golden goose/i.test(name)) continue;
+    const sym = String(c.pair || "").toUpperCase();
+    if (!sym) continue;
+    if (!by[sym]) by[sym] = { symbol: sym, lockedUsd: 0, stockAddress: null };
+    by[sym].lockedUsd += Number(c.stockLockedUsd) || 0;
+    if (!by[sym].stockAddress && c.stockAddress) by[sym].stockAddress = c.stockAddress;
+  }
+  const rows = Object.values(by).sort((a, b) => b.lockedUsd - a.lockedUsd).slice(0, 8);
+  await Promise.all(rows.map(async (row) => {
+    row.onchain = onchain && onchain[row.symbol] != null ? Number(onchain[row.symbol]) : null;
+    row.supply = row.stockAddress ? await tokenSupply(row.stockAddress) : null;
+    row.aum = (row.supply != null && row.onchain != null) ? row.supply * row.onchain : null;
+    row.pct = (row.aum > 0) ? (row.lockedUsd / row.aum) * 100 : null;
+  }));
+  const aum = rows.reduce((n, r) => n + (Number(r.aum) || 0), 0);
+  const locked = rows.reduce((n, r) => n + (Number(r.lockedUsd) || 0), 0);
+  return {
+    rows,
+    aum: aum || null,
+    locked: locked || null,
+    pct: aum > 0 ? (locked / aum) * 100 : null
+  };
+}
+
+function ownBook(coins, uni, head) {
+  let usd = 0, known = 0, vol = 0, holders = 0;
+  const pairs = new Set();
+  for (const c of coins || []) {
+    const n = Number(c.stockLockedUsd);
+    if (Number.isFinite(n) && n > 0) { usd += n; known += 1; }
+    const v = Number(c.volume24h); if (Number.isFinite(v)) vol += v;
+    const h = Number(c.holders); if (Number.isFinite(h)) holders += h;
+    if (c.pair) pairs.add(String(c.pair).toUpperCase());
+  }
+  return { stockLockedUsd: usd, stockLockedKnown: known, coinsListed: coins.length, equitiesPaired: pairs.size, volume24h: vol, holders: holders || null, launches: uni && uni.coins ? uni.coins.length : coins.length, headBlock: head };
+}
+
+function buildSnapshot(book, util, movers, lockedLeaders, headBlock) {
+  return {
+    stockLockedUsd: book && Number.isFinite(book.stockLockedUsd) ? book.stockLockedUsd : null,
+    stockLockedKnown: book && book.stockLockedKnown,
+    coinsListed: book && book.coinsListed,
+    launches: book && book.launches,
+    equitiesPaired: book && book.equitiesPaired,
+    volume24h: book && book.volume24h,
+    fees24h: book && book.fees24h,
+    holders: book && book.holders,
+    movers: movers || [],
+    locked: lockedLeaders || [],
+    util: util || null,
+    headBlock: (book && book.headBlock) || headBlock || null,
+    book: "mfmc-v4"
+  };
+}
+
+export default async function handler(req, res) {
+  res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=180");
+  try {
+    const [uni, book] = await Promise.all([
+      buildUniverse(),
+      loadMfmc().catch(() => null)
+    ]);
+    const map = {};
+    for (const c of (uni && uni.coins) || []) {
+      const addr = String(c.address || "").toLowerCase();
+      if (!addr || BAN_ADDR.has(addr)) continue;
+      map[addr] = Object.assign({}, c, { address: addr, listed: true });
+    }
+    if (book) {
+      for (const c of book.coins || []) {
+        const addr = String(c.address || "").toLowerCase();
+        if (!addr || BAN_ADDR.has(addr)) continue;
+        const row = {
+          ticker: c.ticker,
+          name: c.name,
+          address: addr,
+          poolId: c.poolId,
+          pair: c.pair,
+          launchpad: c.launchpad,
+          price: c.price,
+          marketCap: c.marketCap,
+          change24h: c.change24h,
+          volume24h: c.volume24h,
+          liquidityUsd: c.liquidityUsd,
+          stockLockedUsd: c.stockLockedUsd,
+          stockLockedUnits: c.stockLockedUnits,
+          holders: c.holders,
+          logo: c.logo,
+          createdAt: c.launchedAt,
+          listed: true
+        };
+        map[addr] = map[addr] ? mergeMfmc(map[addr], book) : row;
+      }
+    }
+    if (!map[PIN]) map[PIN] = { ticker: "MEME", name: "A Meme Coin", address: PIN, pair: "AMC", launchpad: "long", listed: true };
+    if (!map[PIN_BONER]) map[PIN_BONER] = { ticker: "BONER", name: "Boner Coin", address: PIN_BONER, pair: "HIMS", launchpad: "long", listed: true };
+    if (!map[PIN_AI]) map[PIN_AI] = { ticker: "AI", name: "Artificial Inu", address: PIN_AI, pair: "NVDA", launchpad: "long", listed: true };
+    if (!map[PIN_ICOIN]) map[PIN_ICOIN] = { ticker: "ICOIN", name: "iCoin", address: PIN_ICOIN, pair: "AAPL", launchpad: "long", listed: true };
+    const all = Object.values(map).map((c) => book ? mergeMfmc(c, book) : c);
+    let world = all.filter((c) => !looksScam(c) && !isWrapper(c));
+    world.sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
+    const quotes = {};
+    await Promise.all([
+      fillDex(world.slice(0, 40), 16),
+      Promise.all(YAHOO.map(async (s) => {
+        try {
+          const px = await yahoo(s);
+          if (px != null) quotes[s] = px;
+        } catch (e) {}
+      }))
+    ]);
+    world = world.filter((c) => !looksScam(c) && !isWrapper(c));
+    const onchain = (uni && uni.onchain) || {};
+    const tape = world.filter(onTape).sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
+    await Promise.all([
+      fillHolders(tape.slice(0, 16), 8),
+      fillPads(tape.slice(0, 12), 12)
+    ]);
+    tape.forEach((c, i) => { c.rank = i + 1; });
+    const metals = tape.filter((c) => c.pair === "GLD" || c.pair === "SLV");
+    const newest = tape.slice().sort((a, b) => String(b.createdAt || b.launchedAt || "").localeCompare(String(a.createdAt || a.launchedAt || ""))).slice(0, 80);
+    const bookCoins = (book && book.coins ? book.coins : all).filter((c) => {
+      const addr = String(c.address || "").toLowerCase();
+      return !BAN_ADDR.has(addr) && !BAN_TICK.test(String(c.ticker || "")) && !/golden goose/i.test(String(c.name || ""));
+    });
+    const own = ownBook(bookCoins, uni, null);
+    const snapBook = {
+      stockLockedUsd: (book && Number.isFinite(book.stockLockedUsd)) ? book.stockLockedUsd : own.stockLockedUsd,
+      stockLockedKnown: (book && book.stockLockedKnown) || own.stockLockedKnown,
+      coinsListed: (book && book.coinsListed) || own.coinsListed,
+      equitiesPaired: (book && book.equitiesPaired) || own.equitiesPaired,
+      volume24h: (book && book.volume24h) || own.volume24h,
+      holders: (book && book.holders) || own.holders,
+      launches: (book && book.launches) || own.launches,
+      headBlock: (book && book.headBlock) || own.headBlock
+    };
+    const util = await wrapperUtil(bookCoins, onchain);
+    if (snapBook.stockLockedUsd && Number.isFinite(snapBook.stockLockedUsd)) {
+      util.locked = snapBook.stockLockedUsd;
+      if (util.aum > 0) util.pct = (util.locked / util.aum) * 100;
+    }
+    const head = snapBook.headBlock || await latestBlock();
+    const movers = tape
+      .filter((c) => Number.isFinite(Number(c.change24h)) && Number(c.marketCap) >= MOVER_FLOOR)
+      .sort((a, b) => Number(b.change24h) - Number(a.change24h))
+      .slice(0, 3)
+      .map(lite);
+    const lockedLeaders = bookCoins
+      .filter((c) => Number(c.stockLockedUsd) > 0)
+      .sort((a, b) => Number(b.stockLockedUsd) - Number(a.stockLockedUsd))
+      .slice(0, 3)
+      .map(lite);
+    res.status(200).json({
+      generated: (book && book.generated) || (uni && uni.generated),
+      source: book ? "mfmc-v4+indexer" : "ownbook+indexer",
+      wrappers: uni && uni.wrappers,
+      aggregates: {
+        coins: tape.length,
+        listed: tape.length,
+        tracked: snapBook.coinsListed,
+        launches: snapBook.launches,
+        metals: metals.length,
+        volume24h: snapBook.volume24h
+      },
+      snapshot: buildSnapshot(snapBook, util, movers, lockedLeaders, head),
+      quotes,
+      onchain,
+      logos: buildLogos((uni && uni.logos) || {}),
+      top: tape,
+      newest,
+      metals,
+      flagged: []
+    });
+  } catch (e) {
+    res.status(502).json({ error: String(e.message || e) });
+  }
+}
