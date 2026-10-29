@@ -1,5 +1,11 @@
 (function () {
+  const KEY = "memefi_booted";
   const boot = document.getElementById("boot");
+  if (localStorage.getItem(KEY) === "1") {
+    if (boot && boot.parentNode) boot.parentNode.removeChild(boot);
+    window.bootMark = function () {};
+    return;
+  }
   const fill = document.getElementById("boot-fill");
   const copy = document.getElementById("boot-copy");
   if (!boot || !fill) return;
@@ -18,7 +24,10 @@
     paint(100);
     boot.classList.add("done");
     setTimeout(function () { boot.classList.add("out"); }, 160);
-    setTimeout(function () { if (boot.parentNode) boot.parentNode.removeChild(boot); }, 480);
+    setTimeout(function () {
+      if (boot.parentNode) boot.parentNode.removeChild(boot);
+      try { localStorage.setItem(KEY, "1"); } catch (e) {}
+    }, 480);
   }
   window.bootMark = function (key) {
     if (key === "wire") paint(55);
