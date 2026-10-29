@@ -71,12 +71,17 @@ function looksScam(c) {
   return false;
 }
 
+function mcapOf(c) {
+  const m = Number(c.marketCap);
+  if (Number.isFinite(m) && m > 0) return m;
+  const f = Number(c.fdv);
+  return Number.isFinite(f) && f > 0 ? f : 0;
+}
 function onTape(c) {
   if (!c) return false;
   if (PINS.has(c.address)) return true;
   if (isWrapper(c) || looksScam(c)) return false;
-  const mcap = Number(c.marketCap) || Number(c.fdv) || 0;
-  return mcap >= TAPE_FLOOR;
+  return mcapOf(c) >= TAPE_FLOOR;
 }
 
 function buildLogos(rh) {
@@ -214,7 +219,7 @@ export default async function handler(req, res) {
     if (!map[PIN_ICOIN]) map[PIN_ICOIN] = { ticker: "ICOIN", name: "iCoin", address: PIN_ICOIN, pair: "AAPL", launchpad: "long", listed: true };
     const all = Object.values(map).map((c) => book ? mergeMfmc(c, book) : c);
     let world = all.filter((c) => !looksScam(c) && !isWrapper(c));
-    world.sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
+    world.sort((a, b) => mcapOf(b) - mcapOf(a));
     const quotes = {};
     await Promise.all([
       fillDex(world.slice(0, 40), 16),
@@ -227,12 +232,12 @@ export default async function handler(req, res) {
     ]);
     world = world.filter((c) => !looksScam(c) && !isWrapper(c));
     const onchain = (uni && uni.onchain) || {};
-    const tape = world.filter(onTape).sort((a, b) => Number(b.marketCap || 0) - Number(a.marketCap || 0));
+    const tape = world.filter(onTape).sort((a, b) => mcapOf(b) - mcapOf(a));
     await Promise.all([
       fillHolders(tape.slice(0, 16), 8),
       fillPads(tape.slice(0, 12), 12)
     ]);
-    tape.forEach((c, i) => { c.rank = i + 1; });
+    tape.forEach((c, i) => { c.rank = i + 1; if (!c.marketCap && c.fdv) c.marketCap = c.fdv; });
     const metals = tape.filter((c) => c.pair === "GLD" || c.pair === "SLV");
     const newest = tape.slice().sort((a, b) => String(b.createdAt || b.launchedAt || "").localeCompare(String(a.createdAt || a.launchedAt || ""))).slice(0, 80);
     const bookCoins = (book && book.coins ? book.coins : all).filter((c) => {
@@ -257,7 +262,7 @@ export default async function handler(req, res) {
     }
     const head = snapBook.headBlock || await latestBlock();
     const movers = tape
-      .filter((c) => Number.isFinite(Number(c.change24h)) && Number(c.marketCap) >= MOVER_FLOOR)
+      .filter((c) => Number.isFinite(Number(c.change24h)) && mcapOf(c) >= MOVER_FLOOR)
       .sort((a, b) => Number(b.change24h) - Number(a.change24h))
       .slice(0, 3)
       .map(lite);
