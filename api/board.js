@@ -75,7 +75,8 @@ function onTape(c) {
   if (!c) return false;
   if (PINS.has(c.address)) return true;
   if (isWrapper(c) || looksScam(c)) return false;
-  return Number(c.marketCap) >= TAPE_FLOOR;
+  const mcap = Number(c.marketCap) || Number(c.fdv) || 0;
+  return mcap >= TAPE_FLOOR;
 }
 
 function buildLogos(rh) {
